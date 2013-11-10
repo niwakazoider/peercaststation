@@ -16,6 +16,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Text.RegularExpressions;
@@ -298,6 +299,9 @@ namespace PeerCastStation.HTTP
     private Content headerPacket = null;
     private List<Content> contentPacketQueue = new List<Content>();
     private Content sentPacket;
+    private long startTime = -1;
+    private Boolean sendFlag = false;
+    private MemoryStream cache = new MemoryStream();
 
     /// <summary>
     /// 元になるストリーム、チャンネル、リクエストからHTTPOutputStreamを初期化します
@@ -519,7 +523,7 @@ namespace PeerCastStation.HTTP
               foreach (var c in contentPacketQueue) {
                 if (c.Timestamp>sentPacket.Timestamp ||
                     (c.Timestamp==sentPacket.Timestamp && c.Position>sentPacket.Position)) {
-                  Send(c.Data);
+                  SendPacket(c);
                   sentPacket = c;
                 }
               }
@@ -656,6 +660,111 @@ namespace PeerCastStation.HTTP
         null,
         null,
         request.Headers["USER-AGENT"]);
+    }
+
+    /* flv timeshift */
+    class FlvPacket
+    {
+      public int size { get; private set; }
+      public long time { get; private set; }
+      public Byte[] data { get; private set; }
+      public Boolean keyframe { get; private set; }
+
+      public void read(MemoryStream stream)
+      {
+        var startPosition = stream.Position;
+        try{
+          if (isCacheLimit(stream)) throw new OverflowException();
+
+          if (stream.Length - stream.Position < 11) throw new EndOfStreamException();
+          var header = new Byte[11];
+          stream.Read(header, 0, header.Length);
+          size = (header[1] << 16) | (header[2] << 8) | (header[3]);
+          time = (header[7] << 24) | (header[4] << 16) | (header[5] << 8) | (header[6]);
+
+          stream.Position = startPosition;
+
+          if (stream.Length - stream.Position < 11 + size + 4) throw new EndOfStreamException();
+          data = new Byte[11 + size + 4];
+          stream.Read(data, 0, data.Length);
+
+          keyframe = (header[0] == 0x09 && data[11] == 0x17 && data[12] == 0x01) ? true : false;
+        }catch(EndOfStreamException eos){
+          stream.Position = startPosition;
+          throw eos;
+        }
+      }
+
+      private Boolean isCacheLimit(MemoryStream stream)
+      {
+        if (stream.Position + 1 >= stream.Length || stream.Length > 1024 * 256){
+            return true;
+        }
+        else{
+          return false;
+        }
+      }
+
+      public void setTime(long time)
+      {
+        var binary = BitConverter.GetBytes(time);
+        data[7] = binary[3];
+        data[4] = binary[2];
+        data[5] = binary[1];
+        data[6] = binary[0];
+      }
+    }
+
+    /* flv timeshift */
+    private void SendPacket(Content c){
+      if (this.Channel.ChannelInfo.ContentType == "FLV"){
+        lock (this){
+          var pos = cache.Position;
+          cache.Position = cache.Length;
+          cache.Write(c.Data, 0, c.Data.Length);
+          cache.Position = pos;
+        }
+
+        Byte[] buffer = new Byte[0];
+
+        try{
+          while (true){
+            var flv = new FlvPacket();
+            lock (this)
+              flv.read(cache);
+
+            if (flv.keyframe){
+              sendFlag = true;
+            }
+            if (flv.time > 0 && startTime < 0){
+              startTime = flv.time;
+            }
+
+            if (flv.time > 0){
+              flv.setTime(flv.time - startTime);
+            }
+            if (flv.data[0] != 0x09 || sendFlag){
+              buffer = Enumerable.Concat(buffer, flv.data).ToArray();
+            }
+          }
+        }
+        catch (OverflowException){
+          lock (this){
+            cache = new MemoryStream();
+          }
+        }
+        catch (Exception){
+
+        }
+        
+        if (buffer.Length > 0){
+          Send(buffer);
+        }
+        
+      }
+      else{
+        Send(c.Data);
+      }
     }
   }
 
