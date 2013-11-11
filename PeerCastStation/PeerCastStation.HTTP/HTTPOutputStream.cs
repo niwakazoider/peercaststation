@@ -299,8 +299,9 @@ namespace PeerCastStation.HTTP
     private Content headerPacket = null;
     private List<Content> contentPacketQueue = new List<Content>();
     private Content sentPacket;
+    private String contentType = "UNKNOWN";
     private long startTime = -1;
-    private Boolean sendFlag = false;
+    private Boolean keyframeFlag = false;
     private MemoryStream cache = new MemoryStream();
 
     /// <summary>
@@ -516,6 +517,7 @@ namespace PeerCastStation.HTTP
             Send(headerPacket.Data);
             sentHeader = headerPacket;
             sentPacket = sentHeader;
+            getOutputContentType(headerPacket);
             Logger.Debug("Sent ContentHeader pos {0}", sentHeader.Position);
           }
           if (sentHeader!=null) {
@@ -663,12 +665,26 @@ namespace PeerCastStation.HTTP
     }
 
     /* flv timeshift */
+    private void getOutputContentType(Content c){
+      if (c.Data != null && c.Data.Length > 2 &&
+        (c.Data[0] == 0x46 && c.Data[1] == 0x4C && c.Data[2] == 0x56) &&
+        this.Channel.ChannelInfo.ContentType == "UNKNOWN"){
+          contentType = "FLV";
+      }
+      else{
+        contentType = this.Channel.ChannelInfo.ContentType;
+      }
+    }
+
+    /* flv timeshift */
     class FlvPacket
     {
       public int size { get; private set; }
       public long time { get; private set; }
       public Byte[] data { get; private set; }
+      public Boolean video { get; private set; }
       public Boolean keyframe { get; private set; }
+      public Boolean avc { get; private set; }
 
       public void read(MemoryStream stream)
       {
@@ -679,6 +695,7 @@ namespace PeerCastStation.HTTP
           if (stream.Length - stream.Position < 11) throw new EndOfStreamException();
           var header = new Byte[11];
           stream.Read(header, 0, header.Length);
+          video = (header[0] == 0x09);
           size = (header[1] << 16) | (header[2] << 8) | (header[3]);
           time = (header[7] << 24) | (header[4] << 16) | (header[5] << 8) | (header[6]);
 
@@ -688,6 +705,7 @@ namespace PeerCastStation.HTTP
           data = new Byte[11 + size + 4];
           stream.Read(data, 0, data.Length);
 
+          avc = (header[0] == 0x09 && (data[11] == 0x17 || data[11] == 0x27) && data[12] == 0x01);
           keyframe = (header[0] == 0x09 && data[11] == 0x17 && data[12] == 0x01) ? true : false;
         }catch(EndOfStreamException eos){
           stream.Position = startPosition;
@@ -717,7 +735,7 @@ namespace PeerCastStation.HTTP
 
     /* flv timeshift */
     private void SendPacket(Content c){
-      if (this.Channel.ChannelInfo.ContentType == "FLV"){
+      if (contentType == "FLV"){
         lock (this){
           var pos = cache.Position;
           cache.Position = cache.Length;
@@ -730,20 +748,17 @@ namespace PeerCastStation.HTTP
         try{
           while (true){
             var flv = new FlvPacket();
-            lock (this)
+            lock (this){
               flv.read(cache);
+            }
 
-            if (flv.keyframe){
-              sendFlag = true;
-            }
-            if (flv.time > 0 && startTime < 0){
-              startTime = flv.time;
-            }
+            if (flv.video && (flv.keyframe || !flv.avc)) keyframeFlag = true;
+            if (flv.time > 0 && startTime < 0) startTime = flv.time;
 
             if (flv.time > 0){
               flv.setTime(flv.time - startTime);
             }
-            if (flv.data[0] != 0x09 || sendFlag){
+            if (!flv.video || keyframeFlag){
               buffer = Enumerable.Concat(buffer, flv.data).ToArray();
             }
           }
