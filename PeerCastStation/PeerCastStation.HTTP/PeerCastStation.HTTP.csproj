@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HTTPDummyOutputStream.cs" />
+    <Compile Include="HTTPFlvExtend.cs" />
     <Compile Include="HTTPOutputStream.cs" />
     <Compile Include="HTTPSourceStream.cs" />
     <Compile Include="PlayList.cs" />

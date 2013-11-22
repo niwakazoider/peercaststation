@@ -138,7 +138,9 @@ namespace PeerCastStation.Main
             try {
               var ol = peerCast.StartListen(listener.EndPoint, listener.LocalAccepts, listener.GlobalAccepts);
               ol.GlobalAuthorizationRequired = listener.GlobalAuthRequired;
-              ol.LocalAuthorizationRequired  = listener.LocalAuthRequired;
+              ol.LocalAuthorizationRequired = listener.LocalAuthRequired;
+              ol.PeerCastStationRelayable = listener.PeerCastStationRelayable;
+              ol.PeerCastRelayable = listener.PeerCastRelayable;
               ol.AuthenticationKey = new AuthenticationKey(listener.AuthId, listener.AuthPassword);
             }
             catch (System.Net.Sockets.SocketException e) {
@@ -207,13 +209,15 @@ namespace PeerCastStation.Main
       s.BroadcastID = peerCast.BroadcastID;
       s.Listeners = peerCast.OutputListeners.Select(listener => 
         new PeerCastStationSettings.ListenerSettings {
-          EndPoint           = listener.LocalEndPoint,
-          GlobalAccepts      = listener.GlobalOutputAccepts,
-          GlobalAuthRequired = listener.GlobalAuthorizationRequired,
-          LocalAccepts       = listener.LocalOutputAccepts,
-          LocalAuthRequired  = listener.LocalAuthorizationRequired,
-          AuthId             = listener.AuthenticationKey.Id,
-          AuthPassword       = listener.AuthenticationKey.Password,
+          EndPoint                 = listener.LocalEndPoint,
+          GlobalAccepts            = listener.GlobalOutputAccepts,
+          GlobalAuthRequired       = listener.GlobalAuthorizationRequired,
+          LocalAccepts             = listener.LocalOutputAccepts,
+          LocalAuthRequired        = listener.LocalAuthorizationRequired,
+          AuthId                   = listener.AuthenticationKey.Id,
+          AuthPassword             = listener.AuthenticationKey.Password,
+          PeerCastStationRelayable = listener.PeerCastStationRelayable,
+          PeerCastRelayable        = listener.PeerCastRelayable,
         }
       ).ToArray();
       s.YellowPages = peerCast.YellowPages.Select(yellowpage =>
@@ -248,6 +252,7 @@ namespace PeerCastStation.Main
     [STAThread]
     static void Main(string[] args)
     {
+      AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
       var first_instance = CheckIsFirstInstance(ref killWaitHandle);
       if (args.Contains("-kill")) {
         killWaitHandle.Set();
@@ -256,19 +261,22 @@ namespace PeerCastStation.Main
       if (!first_instance && !args.Contains("-multi")) {
         return;
       }
-#if !DEBUG
-      try
-#endif
-      {
-        (new Application()).Run();
-      }
-#if !DEBUG
-      catch (Exception e) {
-        logger.Fatal("Unhandled exception");
-        logger.Fatal(e);
-        throw;
-      }
-#endif
+      (new Application()).Run();
     }
+
+    static void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
+    {
+      var dir = System.IO.Path.GetDirectoryName(PecaSettings.DefaultFileName);
+      System.IO.Directory.CreateDirectory(dir);
+      using (var file=System.IO.File.AppendText(System.IO.Path.Combine(dir, "exception.log"))) {
+        file.WriteLine("{0}: {1} (OS:{2}, CLR:{3})",
+          DateTime.Now,
+        	PeerCastStation.Properties.Settings.Default.AgentName,
+        	Environment.OSVersion,
+        	Environment.Version);
+        file.WriteLine(args.ExceptionObject);
+      }
+    }
+
   }
 }

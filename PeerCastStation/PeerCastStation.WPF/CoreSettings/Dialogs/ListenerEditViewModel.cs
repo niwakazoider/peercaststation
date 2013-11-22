@@ -76,6 +76,16 @@ namespace PeerCastStation.WPF.CoreSettings.Dialogs
       get { return globalAuthRequired; }
       set { if (globalAuthRequired!=value) { globalAuthRequired = value; OnPropertyChanged("GlobalAuthRequired"); } }
     }
+    public bool peerCastStationRelayable;
+    public bool PeerCastStationRelayable {
+      get { return peerCastStationRelayable; }
+      set { if (peerCastStationRelayable != value) { peerCastStationRelayable = value; OnPropertyChanged("PeerCastStationRelayable"); } }
+    }
+    public bool peerCastRelayable;
+    public bool PeerCastRelayable {
+      get { return peerCastRelayable; }
+      set { if (peerCastRelayable != value) { peerCastRelayable = value; OnPropertyChanged("PeerCastRelayable"); } }
+    }
     public string authId;
     public string AuthId {
       get { return authId; }
@@ -100,6 +110,8 @@ namespace PeerCastStation.WPF.CoreSettings.Dialogs
       LocalInterface = true;
       GlobalRelay = true;
       GlobalAuthRequired = true;
+      PeerCastStationRelayable = true;
+      PeerCastRelayable = true;
       var key = AuthenticationKey.Generate();
       AuthId       = key.Id;
       AuthPassword = key.Password;
@@ -130,6 +142,8 @@ namespace PeerCastStation.WPF.CoreSettings.Dialogs
             new IPEndPoint(address, Port), localAccepts, glocalAccepts);
           listener.LocalAuthorizationRequired = LocalAuthRequired;
           listener.GlobalAuthorizationRequired = GlobalAuthRequired;
+          listener.PeerCastStationRelayable = PeerCastStationRelayable;
+          listener.PeerCastRelayable = PeerCastRelayable;
           listener.AuthenticationKey = new AuthenticationKey(AuthId, AuthPassword);
         }
         catch (SocketException)

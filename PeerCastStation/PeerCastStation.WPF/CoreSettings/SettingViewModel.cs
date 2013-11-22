@@ -126,6 +126,24 @@ namespace PeerCastStation.WPF.CoreSettings
     public string AuthPassword {
       get { return model.AuthenticationKey!=null ? model.AuthenticationKey.Password : null; }
     }
+    public bool PeerCastStationRelayable {
+      get { return model.PeerCastStationRelayable; }
+      set {
+        if (model.PeerCastStationRelayable!=value) {
+          model.PeerCastStationRelayable = value;
+          OnPropertyChanged("PeerCastStationRelayable");
+        }
+      }
+    }
+    public bool PeerCastRelayable {
+      get { return model.PeerCastRelayable; }
+      set {
+        if (model.PeerCastRelayable!=value) {
+          model.PeerCastRelayable = value;
+          OnPropertyChanged("PeerCastRelayable");
+        }
+      }
+    }
 
     public System.Windows.Input.ICommand RegenerateAuthKey { get; private set; }
 

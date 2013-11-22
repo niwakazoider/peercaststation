@@ -16,7 +16,6 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Text.RegularExpressions;
@@ -299,10 +298,7 @@ namespace PeerCastStation.HTTP
     private Content headerPacket = null;
     private List<Content> contentPacketQueue = new List<Content>();
     private Content sentPacket;
-    private String contentType = "UNKNOWN";
-    private long startTime = -1;
-    private Boolean keyframeFlag = false;
-    private MemoryStream cache = new MemoryStream();
+    private HTTPFlvExtend extend;
 
     /// <summary>
     /// 元になるストリーム、チャンネル、リクエストからHTTPOutputStreamを初期化します
@@ -517,15 +513,25 @@ namespace PeerCastStation.HTTP
             Send(headerPacket.Data);
             sentHeader = headerPacket;
             sentPacket = sentHeader;
-            getOutputContentType(headerPacket);
             Logger.Debug("Sent ContentHeader pos {0}", sentHeader.Position);
+            if(getContentType(headerPacket)=="FLV"){
+              extend = new HTTPFlvExtend();
+            }
+            if (contentPacketQueue.Count > 0){
+              sentPacket = contentPacketQueue[contentPacketQueue.Count - 1];
+            }
           }
           if (sentHeader!=null) {
             lock (contentPacketQueue) {
               foreach (var c in contentPacketQueue) {
                 if (c.Timestamp>sentPacket.Timestamp ||
                     (c.Timestamp==sentPacket.Timestamp && c.Position>sentPacket.Position)) {
-                  SendPacket(c);
+                  if (extend != null){
+                    Send(extend.parse(c.Data));
+                  }
+                  else{
+                    Send(c.Data);
+                  }
                   sentPacket = c;
                 }
               }
@@ -540,6 +546,13 @@ namespace PeerCastStation.HTTP
           break;
         }
       });
+    }
+
+    protected void Send(byte[] bytes)
+    {
+      if (bytes.Length > 0){
+        base.Send(bytes);
+      }
     }
 
     protected virtual void OnWriteResponseBodyCompleted()
@@ -664,121 +677,20 @@ namespace PeerCastStation.HTTP
         request.Headers["USER-AGENT"]);
     }
 
-    /* flv timeshift */
-    private void getOutputContentType(Content c){
-      if (c.Data != null && c.Data.Length > 2 &&
-        (c.Data[0] == 0x46 && c.Data[1] == 0x4C && c.Data[2] == 0x56) &&
-        this.Channel.ChannelInfo.ContentType == "UNKNOWN"){
-          contentType = "FLV";
-      }
-      else{
-        contentType = this.Channel.ChannelInfo.ContentType;
-      }
-    }
-
-    /* flv timeshift */
-    class FlvPacket
+    /// <summary>
+    /// ContentTypeを返します。UNKNOWNの場合は中身からContentTypeを判断します
+    /// </summary>
+    private String getContentType(Content c)
     {
-      public int size { get; private set; }
-      public long time { get; private set; }
-      public Byte[] data { get; private set; }
-      public Boolean video { get; private set; }
-      public Boolean keyframe { get; private set; }
-      public Boolean avc { get; private set; }
-
-      public void read(MemoryStream stream)
+      if (c.Data != null && c.Data.Length > 2 &&
+         Channel.ChannelInfo.ContentType == "UNKNOWN" &&
+         (c.Data[0] == 0x46 && c.Data[1] == 0x4C && c.Data[2] == 0x56))
       {
-        var startPosition = stream.Position;
-        try{
-          if (isCacheLimit(stream)) throw new OverflowException();
-
-          if (stream.Length - stream.Position < 11) throw new EndOfStreamException();
-          var header = new Byte[11];
-          stream.Read(header, 0, header.Length);
-          video = (header[0] == 0x09);
-          size = (header[1] << 16) | (header[2] << 8) | (header[3]);
-          time = (header[7] << 24) | (header[4] << 16) | (header[5] << 8) | (header[6]);
-
-          stream.Position = startPosition;
-
-          if (stream.Length - stream.Position < 11 + size + 4) throw new EndOfStreamException();
-          data = new Byte[11 + size + 4];
-          stream.Read(data, 0, data.Length);
-
-          avc = (header[0] == 0x09 && (data[11] == 0x17 || data[11] == 0x27) && data[12] == 0x01);
-          keyframe = (header[0] == 0x09 && data[11] == 0x17 && data[12] == 0x01) ? true : false;
-        }catch(EndOfStreamException eos){
-          stream.Position = startPosition;
-          throw eos;
-        }
+        return "FLV";
       }
-
-      private Boolean isCacheLimit(MemoryStream stream)
+      else
       {
-        if (stream.Position + 1 >= stream.Length || stream.Length > 1024 * 256){
-            return true;
-        }
-        else{
-          return false;
-        }
-      }
-
-      public void setTime(long time)
-      {
-        var binary = BitConverter.GetBytes(time);
-        data[7] = binary[3];
-        data[4] = binary[2];
-        data[5] = binary[1];
-        data[6] = binary[0];
-      }
-    }
-
-    /* flv timeshift */
-    private void SendPacket(Content c){
-      if (contentType == "FLV"){
-        lock (this){
-          var pos = cache.Position;
-          cache.Position = cache.Length;
-          cache.Write(c.Data, 0, c.Data.Length);
-          cache.Position = pos;
-        }
-
-        Byte[] buffer = new Byte[0];
-
-        try{
-          while (true){
-            var flv = new FlvPacket();
-            lock (this){
-              flv.read(cache);
-            }
-
-            if (flv.video && (flv.keyframe || !flv.avc)) keyframeFlag = true;
-            if (flv.time > 0 && startTime < 0) startTime = flv.time;
-
-            if (flv.time > 0){
-              flv.setTime(flv.time - startTime);
-            }
-            if (!flv.video || keyframeFlag){
-              buffer = Enumerable.Concat(buffer, flv.data).ToArray();
-            }
-          }
-        }
-        catch (OverflowException){
-          lock (this){
-            cache = new MemoryStream();
-          }
-        }
-        catch (Exception){
-
-        }
-        
-        if (buffer.Length > 0){
-          Send(buffer);
-        }
-        
-      }
-      else{
-        Send(c.Data);
+        return Channel.ChannelInfo.ContentType;
       }
     }
   }

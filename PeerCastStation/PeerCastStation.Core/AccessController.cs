@@ -199,9 +199,17 @@ namespace PeerCastStation.Core
   public class AccessControlInfo
   {
     public AuthenticationKey AuthenticationKey { get; private set; }
+    public bool PeerCastStationRelayable       { get; private set; }
+    public bool PeerCastRelayable              { get; private set; }
     public AccessControlInfo(AuthenticationKey key)
     {
       this.AuthenticationKey = key;
+    }
+    public void SetPeerCastStationRelayable(bool relayable){
+      this.PeerCastStationRelayable = relayable;
+    }
+    public void SetPeerCastRelayable(bool relayable){
+      this.PeerCastRelayable = relayable;
     }
 
     public bool CheckAuthorization(string id, string pass)

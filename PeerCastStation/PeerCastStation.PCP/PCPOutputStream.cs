@@ -221,6 +221,8 @@ namespace PeerCastStation.PCP
   public class PCPOutputStream
     : OutputStreamBase
   {
+    private static readonly Logger logger = new Logger(typeof(PCPOutputStream));
+
     public override OutputStreamType OutputStreamType
     {
       get { return OutputStreamType.Relay; }
@@ -667,6 +669,12 @@ namespace PeerCastStation.PCP
       else if ((Downhost.Extra.GetHeloVersion() ?? 0)<1200) {
         Logger.Info("Helo version {0} is too old", Downhost.Extra.GetHeloVersion() ?? 0);
         //クライアントバージョンが無かった、もしくは古すぎ
+        Stop(StopReason.BadAgentError);
+      }
+      else if (UserAgent.IndexOf("PeerCastStation/")>=0 && !AccessControl.PeerCastStationRelayable ||
+          UserAgent.IndexOf("PeerCast/")>=0 && !AccessControl.PeerCastRelayable) {
+        Logger.Info("UA {0} is not available", UserAgent);
+        //許可されていないクライアント
         Stop(StopReason.BadAgentError);
       }
       else if (IsRelayFull) {
