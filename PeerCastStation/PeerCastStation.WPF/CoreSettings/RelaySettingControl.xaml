@@ -59,7 +59,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
       <CheckBox Grid.Row="1" Grid.Column="2" Content="視聴"            IsChecked="{Binding GlobalPlay}"/>
       <CheckBox Grid.Row="1" Grid.Column="3" Content="操作"            IsChecked="{Binding GlobalInterface}"/>
       <CheckBox Grid.Row="1" Grid.Column="4" Content="要認証"          IsChecked="{Binding GlobalAuthRequired}"/>
-      <Label    Grid.Row="2" Grid.Column="0" Content="バージョンによる接続を許可:"/>
+      <Label    Grid.Row="2" Grid.Column="0" Content="配信時に接続を許可:"/>
       <CheckBox Grid.Row="2" Grid.Column="1" Content="PeerCastStation" IsChecked="{Binding PeerCastStationRelayable}" Grid.ColumnSpan="2"/>
       <CheckBox Grid.Row="2" Grid.Column="3" Content="PeerCast"        IsChecked="{Binding PeerCastRelayable}" Grid.ColumnSpan="2"/>
     </Grid>
