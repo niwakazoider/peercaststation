@@ -671,7 +671,8 @@ namespace PeerCastStation.PCP
         //クライアントバージョンが無かった、もしくは古すぎ
         Stop(StopReason.BadAgentError);
       }
-      else if (Channel.IsBroadcasting &&
+      else if (Channel!=null && Channel.IsBroadcasting &&
+         UserAgent != null && AccessControl != null &&
          (UserAgent.IndexOf("PeerCastStation/")>=0 && !AccessControl.PeerCastStationRelayable ||
           UserAgent.IndexOf("PeerCast/")>=0 && !AccessControl.PeerCastRelayable)) {
         Logger.Info("UA {0} is not available", UserAgent);
