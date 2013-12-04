@@ -426,6 +426,8 @@ namespace PeerCastStation.HTTP
             Channel.ChannelInfo.ContentType=="WMV" ||
             Channel.ChannelInfo.ContentType=="WMA" ||
             Channel.ChannelInfo.ContentType=="ASX";
+          bool ts =
+            Channel.ChannelInfo.ContentType=="TS";
           if (mms) {
             return
               "HTTP/1.0 200 OK\r\n"                         +
@@ -434,6 +436,17 @@ namespace PeerCastStation.HTTP
               "Pragma: no-cache\r\n"                        +
               "Pragma: features=\"broadcast,playlist\"\r\n" +
               "Content-Type: application/x-mms-framed\r\n";
+          }
+          else if (ts){
+            return
+              "HTTP/1.0 200 OK\r\n" +
+              "Server: Rex/9.0.2980\r\n" +
+              "Cache-Control: no-cache\r\n" +
+              "Pragma: no-cache\r\n" +
+              "Content-Length: 2147483647\r\n" +
+              "Content-Type: " +
+              Channel.ChannelInfo.MIMEType +
+              "\r\n";
           }
           else {
             return
@@ -449,9 +462,14 @@ namespace PeerCastStation.HTTP
             Channel.ChannelInfo.ContentType=="WMV" ||
             Channel.ChannelInfo.ContentType=="WMA" ||
             Channel.ChannelInfo.ContentType=="ASX";
+          bool ts =
+            Channel.ChannelInfo.ContentType=="TS";
           IPlayList pls;
           if (mms) {
             pls = new ASXPlayList();
+          }
+          else if(ts){
+            pls = new HLSPlayList();
           }
           else {
             pls = new M3UPlayList();
@@ -481,9 +499,14 @@ namespace PeerCastStation.HTTP
         Channel.ChannelInfo.ContentType=="WMV" ||
         Channel.ChannelInfo.ContentType=="WMA" ||
         Channel.ChannelInfo.ContentType=="ASX";
+      bool ts =
+        Channel.ChannelInfo.ContentType=="TS";
       IPlayList pls;
       if (mms) {
         pls = new ASXPlayList();
+      }
+      else if (ts){
+        pls = new HLSPlayList();
       }
       else {
         pls = new M3UPlayList();

@@ -121,4 +121,35 @@ namespace PeerCastStation.HTTP
       }
     }
   }
+
+  /// <summary>
+  /// HLSのプレイリストを作成するクラスです
+  /// </summary>
+  public class HLSPlayList
+    : IPlayList
+  {
+    public string MIMEType { get { return "audio/mpegurl"; } }
+    public IList<Channel> Channels { get; private set; }
+
+    public HLSPlayList()
+    {
+      Channels = new List<Channel>();
+    }
+
+    public byte[] CreatePlayList(Uri baseuri)
+    {
+      var res = new System.Text.StringBuilder();
+      res.AppendLine("#EXTM3U");
+      res.AppendLine("#EXT-X-VERSION:3");
+      res.AppendLine("#EXT-X-TARGETDURATION:8");
+      res.AppendLine("#EXT-X-MEDIA-SEQUENCE:1");
+      res.AppendLine("");
+      foreach (var c in Channels){
+        var url = new Uri(baseuri, c.ChannelID.ToString("N").ToUpper() + c.ChannelInfo.ContentExtension);
+        res.AppendLine("#EXTINF:8,");
+        res.AppendLine(url.ToString());
+      }
+      return System.Text.Encoding.ASCII.GetBytes(res.ToString());
+    }
+  }
 }

@@ -112,6 +112,10 @@
       <Project>{5ea68141-ac06-428b-9526-a6835e0cc2b2}</Project>
       <Name>PeerCastStation.WPF</Name>
     </ProjectReference>
+    <ProjectReference Include="..\PeerCastStation.TS\PeerCastStation.TS.csproj">
+      <Project>{8a887c2d-784c-4213-8598-625c89bf0b43}</Project>
+      <Name>PeerCastStation.TS</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">
