@@ -52,6 +52,8 @@
     <Compile Include="HTTPOutputStream.cs" />
     <Compile Include="HTTPSourceStream.cs" />
     <Compile Include="PlayList.cs" />
+    <Compile Include="HlsSegment.cs" />
+    <Compile Include="TsPacket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

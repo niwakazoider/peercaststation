@@ -130,10 +130,17 @@ namespace PeerCastStation.HTTP
   {
     public string MIMEType { get { return "audio/mpegurl"; } }
     public IList<Channel> Channels { get; private set; }
+    public IList<SegmentData> Segments { get; private set; }
 
     public HLSPlayList()
     {
       Channels = new List<Channel>();
+      Segments = new List<SegmentData>();
+    }
+
+    public void AddSegments(IList<SegmentData> list)
+    {
+      Segments = list;
     }
 
     public byte[] CreatePlayList(Uri baseuri)
@@ -142,14 +149,20 @@ namespace PeerCastStation.HTTP
       res.AppendLine("#EXTM3U");
       res.AppendLine("#EXT-X-VERSION:3");
       res.AppendLine("#EXT-X-TARGETDURATION:8");
-      res.AppendLine("#EXT-X-MEDIA-SEQUENCE:1");
-      res.AppendLine("");
-      foreach (var c in Channels){
-        var url = new Uri(baseuri, c.ChannelID.ToString("N").ToUpper() + c.ChannelInfo.ContentExtension);
-        res.AppendLine("#EXTINF:8,");
-        res.AppendLine(url.ToString());
+      if (Segments.Count > 0){
+        res.AppendLine(String.Format("#EXT-X-MEDIA-SEQUENCE:{0}", Segments[0].sequence));
+        foreach (var c in Channels){
+          foreach (var s in Segments){
+            var url = new Uri(baseuri, c.ChannelID.ToString("N").ToUpper() + String.Format("_{0:00000}", s.sequence) + c.ChannelInfo.ContentExtension);
+            res.AppendLine("#EXTINF:"+s.duration+",");
+            //res.AppendLine("#EXTINF:8,");
+            res.AppendLine(url.ToString());
+          }
+          break;
+        }
       }
       return System.Text.Encoding.ASCII.GetBytes(res.ToString());
     }
+
   }
 }

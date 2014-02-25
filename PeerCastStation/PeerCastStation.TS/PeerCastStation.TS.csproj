@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TSContentReader.cs" />
+    <Compile Include="TSPacket.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PeerCastStation.Core\PeerCastStation.Core.csproj">
