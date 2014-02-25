@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using PeerCastStation.Core;
 
-namespace PeerCastStation.HTTP.Extend
+namespace PeerCastStation.HTTP
 {
   class HlsSegment
   {
