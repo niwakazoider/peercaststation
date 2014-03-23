@@ -431,8 +431,13 @@ namespace PeerCastStation.PCP
       }
     }
 
-    protected IEnumerable<Atom> CreateContentPackets(Channel channel, ref Content lastHeader, ref Content lastContent)
+    protected IEnumerable<Atom> CreateContentPackets(
+      Channel channel,
+      ref Content lastHeader,
+      ref Content lastContent,
+      out bool skipped)
     {
+      skipped = false;
       var atoms = Enumerable.Empty<Atom>();
       if (channel.ContentHeader!=null &&
           (lastHeader==null || channel.ContentHeader.Position!=lastHeader.Position)) {
@@ -445,9 +450,14 @@ namespace PeerCastStation.PCP
       if (lastHeader!=null) {
         Content content;
         if (lastContent!=null) {
-          content = channel.Contents.NextOf(lastContent.Stream, lastContent.Timestamp, lastContent.Position);
-          if (content!=null && lastContent.Position+lastContent.Data.LongLength<content.Position) {
-            Logger.Info("Content Skipped {0} expected but was {1}",
+          content = channel.Contents.GetNewerContent(lastContent, out skipped);
+          if (content!=null && skipped) {
+            Logger.Error("Content Skipped: serial {0} expected but was {1}",
+              lastContent.Serial+1,
+              content.Serial);
+          }
+          else if (content!=null && lastContent.Position+lastContent.Data.LongLength<content.Position) {
+            Logger.Info("Content Skipped: position {0} expected but was {1}",
               lastContent.Position+lastContent.Data.LongLength,
               content.Position);
           }
@@ -470,15 +480,19 @@ namespace PeerCastStation.PCP
     protected virtual void SendRelayBody(ref Content lastHeader, ref Content lastContent)
     {
       if (IsContentChanged()) {
-        bool sent = true;
-        while (sent) {
+        bool sent    = true;
+        bool skipped = false;
+        while (sent && !skipped) {
           sent = false;
           int cnt = 0;
-          foreach (var atom in CreateContentPackets(Channel, ref lastHeader, ref lastContent)) {
+          foreach (var atom in CreateContentPackets(Channel, ref lastHeader, ref lastContent, out skipped)) {
             sent = true;
             Send(atom);
             cnt++;
           }
+        }
+        if (skipped) {
+          Stop(StopReason.SendTimeoutError);
         }
       }
     }
@@ -499,12 +513,21 @@ namespace PeerCastStation.PCP
     {
       base.OnIdle();
       if (IsChannelFound) {
-        Atom atom = null;
-        while ((atom = RecvAtom())!=null) {
-          ProcessAtom(atom);
+        try {
+          foreach (var atom in Connection.RecvAtoms()) {
+            ProcessAtom(atom);
+          }
+          if (Downhost!=null && !IsRelayFull) {
+            SendRelayBody(ref lastHeader, ref lastContent);
+          }
         }
-        if (Downhost!=null && !IsRelayFull) {
-          SendRelayBody(ref lastHeader, ref lastContent);
+        catch (InvalidDataException e) {
+          Logger.Error(e);
+          OnError();
+        }
+        catch (IOException e) {
+          Logger.Info(e);
+          OnError();
         }
       }
       else {
@@ -576,6 +599,10 @@ namespace PeerCastStation.PCP
         AtomWriter.Write(stream, new Atom(Atom.PCP_QUIT, Atom.PCP_ERROR_QUIT));
         stream.Close();
         client.Close();
+      }
+      catch (InvalidDataException e) {
+        Logger.Debug("Ping failed");
+        Logger.Debug(e);
       }
       catch (System.Net.Sockets.SocketException e) {
         Logger.Debug("Ping failed");
@@ -778,6 +805,9 @@ namespace PeerCastStation.PCP
         break;
       case StopReason.Any:
         Send(new Atom(Atom.PCP_QUIT, Atom.PCP_ERROR_QUIT));
+        break;
+      case StopReason.SendTimeoutError:
+        Send(new Atom(Atom.PCP_QUIT, Atom.PCP_ERROR_QUIT + Atom.PCP_ERROR_SKIP));
         break;
       case StopReason.BadAgentError:
         Send(new Atom(Atom.PCP_QUIT, Atom.PCP_ERROR_QUIT + Atom.PCP_ERROR_BADAGENT));

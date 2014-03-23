@@ -57,14 +57,17 @@ namespace PeerCastStation.Core
     private ContentCollection contents = new ContentCollection();
     private System.Diagnostics.Stopwatch uptimeTimer = new System.Diagnostics.Stopwatch();
     private int streamID = 0;
-    private ICollection<IContentChangeDelegate> extraMethodContainer = new Collection<IContentChangeDelegate>();
-    public ICollection<IContentChangeDelegate> ExtraMethodContainer { get { return extraMethodContainer; } }
     protected ReaderWriterLockSlim readWriteLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
+    //HLSのセグメントデータを保持するために修正しました
+    //Coreはあんま弄りたくないのでうまい方法があったら直したい by @niwakazoider
+    private ICollection<IContentChangeDelegate> extraMethodContainer = new Collection<IContentChangeDelegate>();
+    public ICollection<IContentChangeDelegate> ExtraMethodContainer { get { return extraMethodContainer; } }
     public interface IContentChangeDelegate
     {
       void OnContentChanged();
     }
+    
     protected void ReadLock(Action action)
     {
       readWriteLock.EnterReadLock();
@@ -591,8 +594,8 @@ namespace PeerCastStation.Core
       this.ChannelID   = channel_id;
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
-        for (int i = 0; i < extraMethodContainer.Count; i++)
-        {
+        //HLSのための修正 by @niwakazoider
+        for (int i = 0; i < extraMethodContainer.Count; i++){
           extraMethodContainer.ElementAt(i).OnContentChanged();
         }
       };

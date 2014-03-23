@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using System;
-using System.Linq;
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
@@ -42,15 +41,12 @@ namespace PeerCastStation.HTTP
     /// </summary>
     public Dictionary<string, string> Headers { get; private set; }
 
-    protected Logger Logger { get; private set; }
-
     /// <summary>
     /// HTTPリクエスト文字列からHTTPRequestオブジェクトを構築します
     /// </summary>
     /// <param name="requests">行毎に区切られたHTTPリクエストの文字列表現</param>
     public HTTPRequest(IEnumerable<string> requests)
     {
-      Logger = new Logger(this.GetType());
       Headers = new Dictionary<string, string>();
       string host = "localhost";
       string path = "/";
@@ -75,7 +71,6 @@ namespace PeerCastStation.HTTP
       else {
         this.Uri = null;
       }
-      Logger.Debug("RequestHeader: {0}\r\n\r\n", string.Join("\r\n", ((List<string>)requests).ToArray()));
     }
   }
 
@@ -305,7 +300,7 @@ namespace PeerCastStation.HTTP
     private Content headerPacket = null;
     private List<Content> contentPacketQueue = new List<Content>();
     private Content sentPacket;
-    private HlsSegment hls = null;
+    private HLSSegment hls = null;
 
     /// <summary>
     /// 元になるストリーム、チャンネル、リクエストからHTTPOutputStreamを初期化します
@@ -327,7 +322,6 @@ namespace PeerCastStation.HTTP
       HTTPRequest request)
       : base(peercast, input_stream, output_stream, remote_endpoint, access_control, channel, null)
     {
-      SendTimeout = 0;
       Logger.Debug("Initialized: Channel {0}, Remote {1}, Request {2} {3}",
         channel!=null ? channel.ChannelID.ToString("N") : "(null)",
         remote_endpoint,
@@ -445,16 +439,24 @@ namespace PeerCastStation.HTTP
               "Pragma: features=\"broadcast,playlist\"\r\n" +
               "Content-Type: application/x-mms-framed\r\n";
           }
-          else if (ts){
-            return
-              "HTTP/1.0 200 OK\r\n" +
-              "Server: Rex/9.0.2980\r\n" +
-              "Cache-Control: no-cache\r\n" +
-              "Pragma: no-cache\r\n" +
-              "Content-Length: " + hls.GetContentLength() + "\r\n" +
-              "Content-Type: " +
-              Channel.ChannelInfo.MIMEType +
-              "\r\n";
+          else if (ts) {
+            if (hls.GetContentLength() > 0){
+              return
+                "HTTP/1.0 200 OK\r\n"                                    +
+                "Server: Rex/9.0.2980\r\n"                               +
+                "Cache-Control: no-cache\r\n"                            +
+                "Pragma: no-cache\r\n"                                   +
+                "Content-Type: " + Channel.ChannelInfo.MIMEType + "\r\n" +
+                "Content-Length: " + hls.GetContentLength() + "\r\n";
+            }
+            else {
+              return
+                "HTTP/1.0 200 OK\r\n"         +
+                "Server: Rex/9.0.2980\r\n"    +
+                "Cache-Control: no-cache\r\n" +
+                "Pragma: no-cache\r\n"        +
+                "Content-Type: " + Channel.ChannelInfo.MIMEType + "\r\n";
+            }
           }
           else {
             return
@@ -476,7 +478,7 @@ namespace PeerCastStation.HTTP
           if (mms) {
             pls = new ASXPlayList();
           }
-          else if(ts){
+          else if (ts) {
             pls = new HLSPlayList();
           }
           else {
@@ -513,7 +515,7 @@ namespace PeerCastStation.HTTP
       if (mms) {
         pls = new ASXPlayList();
       }
-      else if (ts){
+      else if (ts) {
         pls = new HLSPlayList();
         ((HLSPlayList)pls).AddSegments(hls.GetSegmentInfoList());
       }
@@ -540,18 +542,15 @@ namespace PeerCastStation.HTTP
           OnWriteResponseBodyCompleted();
           break;
         case BodyType.Content:
-          if (Channel.ChannelInfo.ContentType=="TS")
-          {
+          if (Channel.ChannelInfo.ContentType == "TS") {
             var i = hls.GetSequenceFromUrl();
-            if (i > 0)
-            {
+            if (i > 0) {
               byte[] data = hls.GetSegmentData(i);
               Send(data);
               OnWriteResponseBodyCompleted();
               break;
             }
           }
-
           if (sentHeader!=headerPacket) {
             Send(headerPacket.Data);
             sentHeader = headerPacket;
@@ -561,6 +560,7 @@ namespace PeerCastStation.HTTP
           if (sentHeader!=null) {
             lock (contentPacketQueue) {
               foreach (var c in contentPacketQueue) {
+                if (HasError) break;
                 if (c.Timestamp>sentPacket.Timestamp ||
                     (c.Timestamp==sentPacket.Timestamp && c.Position>sentPacket.Position)) {
                   Send(c.Data);
@@ -600,23 +600,16 @@ namespace PeerCastStation.HTTP
           //Do nothing
         }
         else {
-          if (Channel!=null) {
-            Logger.Debug("ContentType: {0}", Channel.ChannelInfo.ContentType);
-          }
-          if (Channel == null || Channel.ChannelInfo.ContentType != "TS")
-          {
+          if (Channel == null || Channel.ChannelInfo.ContentType != "TS") {
             OnWaitChannelCompleted();
           }
-          else
-          {
-            if (hls == null)
-            {
-              hls = new HlsSegment(Channel, request.Uri.ToString());
+          else {
+            if (hls == null) {
+              hls = new HLSSegment(Channel, request.Uri.ToString());
             }
-            logger.Debug("segcount:"+hls.GetSegmentInfoList().Count);
-            if (Environment.TickCount - started > 20000 ||
-              hls.GetSegmentInfoList().Count > 0)
-            {
+            //logger.Debug("segcount:" + hls.GetSegmentInfoList().Count);
+            if (Environment.TickCount - started > 10000 ||
+                hls.GetSegmentInfoList().Count > 0){
               OnWaitChannelCompleted();
             }
           }
@@ -640,7 +633,7 @@ namespace PeerCastStation.HTTP
         var response_header = CreateResponseHeader();
         var bytes = System.Text.Encoding.UTF8.GetBytes(response_header + "\r\n");
         Send(bytes);
-        Logger.Debug("ResponseHeader: {0}", response_header);
+        Logger.Debug("Header: {0}", response_header);
         OnWriteResponseHeaderCompleted();
       });
     }
@@ -717,7 +710,6 @@ namespace PeerCastStation.HTTP
         null,
         request.Headers["USER-AGENT"]);
     }
-
   }
 
   [Plugin]

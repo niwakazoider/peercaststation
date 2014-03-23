@@ -34,7 +34,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeerCastStation", "PeerCastStation\PeerCastStation.csproj", "{3D030F73-33A1-4FEF-9A3F-D8CD34FC63A2}"
 	ProjectSection(ProjectDependencies) = postProject
 		{BF5E0B6D-961A-4216-BACF-01D80AB3D6BB} = {BF5E0B6D-961A-4216-BACF-01D80AB3D6BB}
-		{45205390-4A23-480E-9D97-831D42C77304} = {45205390-4A23-480E-9D97-831D42C77304}
+		{5BBCAB9E-4F9D-448E-B08C-416A263550EF} = {5BBCAB9E-4F9D-448E-B08C-416A263550EF}
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeerCastStation.UI.HTTP", "PeerCastStation.UI.HTTP\PeerCastStation.UI.HTTP.csproj", "{BF5E0B6D-961A-4216-BACF-01D80AB3D6BB}"
@@ -63,7 +63,7 @@ Project("{6141683F-8A12-4E36-9623-2EB02B2C2303}") = "PeerCastStationSetup", "Pee
 		{BF5E0B6D-961A-4216-BACF-01D80AB3D6BB} = {BF5E0B6D-961A-4216-BACF-01D80AB3D6BB}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeerCastStation.TS", "PeerCastStation.TS\PeerCastStation.TS.csproj", "{45205390-4A23-480E-9D97-831D42C77304}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeerCastStation.TS", "PeerCastStation.TS\PeerCastStation.TS.csproj", "{5BBCAB9E-4F9D-448E-B08C-416A263550EF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -128,10 +128,10 @@ Global
 		{AE7F292B-5A30-4944-81B9-BBB4EB2FF6B5}.Debug|Any CPU.ActiveCfg = SingleImage
 		{AE7F292B-5A30-4944-81B9-BBB4EB2FF6B5}.Release|Any CPU.ActiveCfg = SingleImage
 		{AE7F292B-5A30-4944-81B9-BBB4EB2FF6B5}.Release|Any CPU.Build.0 = SingleImage
-		{45205390-4A23-480E-9D97-831D42C77304}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{45205390-4A23-480E-9D97-831D42C77304}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{45205390-4A23-480E-9D97-831D42C77304}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{45205390-4A23-480E-9D97-831D42C77304}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BBCAB9E-4F9D-448E-B08C-416A263550EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BBCAB9E-4F9D-448E-B08C-416A263550EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BBCAB9E-4F9D-448E-B08C-416A263550EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BBCAB9E-4F9D-448E-B08C-416A263550EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

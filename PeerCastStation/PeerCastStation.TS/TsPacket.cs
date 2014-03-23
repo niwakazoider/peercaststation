@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace PeerCastStation.HTTP.Extend
+namespace PeerCastStation.TS
 {
-  public class TsPacket
+  public class TSPacket
   {
     public int sync_byte { get; private set; }
     public int transport_error_indicator { get; private set; }
@@ -21,7 +21,7 @@ namespace PeerCastStation.HTTP.Extend
     public bool video_block { get; private set; }
     public bool keyframe { get; private set; }
 
-    public TsPacket(byte[] packet)
+    public TSPacket(byte[] packet)
     {
       this.sync_byte = packet[0];
       this.transport_error_indicator = (packet[1] & 0x80) >> 7;

@@ -104,6 +104,10 @@
       <Project>{F9D126C6-76B7-45E2-B62E-6AC35EE285CD}</Project>
       <Name>PeerCastStation.PCP</Name>
     </ProjectReference>
+    <ProjectReference Include="..\PeerCastStation.TS\PeerCastStation.TS.csproj">
+      <Project>{5bbcab9e-4f9d-448e-b08c-416a263550ef}</Project>
+      <Name>PeerCastStation.TS</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PeerCastStation.UI.HTTP\PeerCastStation.UI.HTTP.csproj">
       <Project>{BF5E0B6D-961A-4216-BACF-01D80AB3D6BB}</Project>
       <Name>PeerCastStation.UI.HTTP</Name>
@@ -111,10 +115,6 @@
     <ProjectReference Include="..\PeerCastStation.WPF\PeerCastStation.WPF.csproj">
       <Project>{5ea68141-ac06-428b-9526-a6835e0cc2b2}</Project>
       <Name>PeerCastStation.WPF</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PeerCastStation.TS\PeerCastStation.TS.csproj">
-      <Project>{8a887c2d-784c-4213-8598-625c89bf0b43}</Project>
-      <Name>PeerCastStation.TS</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -127,7 +127,13 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="peercaststation.ico" />
+    <Content Include="readme.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\PeerCastStation.snk">

@@ -148,14 +148,16 @@ namespace PeerCastStation.HTTP
       var res = new System.Text.StringBuilder();
       res.AppendLine("#EXTM3U");
       res.AppendLine("#EXT-X-VERSION:3");
-      res.AppendLine("#EXT-X-TARGETDURATION:8");
-      if (Segments.Count > 0){
+      res.AppendLine("#EXT-X-TARGETDURATION:6");
+      if (Segments.Count > 0)
+      {
         res.AppendLine(String.Format("#EXT-X-MEDIA-SEQUENCE:{0}", Segments[0].sequence));
-        foreach (var c in Channels){
-          foreach (var s in Segments){
+        foreach (var c in Channels)
+        {
+          foreach (var s in Segments)
+          {
             var url = new Uri(baseuri, c.ChannelID.ToString("N").ToUpper() + String.Format("_{0:00000}", s.sequence) + c.ChannelInfo.ContentExtension);
-            res.AppendLine("#EXTINF:"+s.duration+",");
-            //res.AppendLine("#EXTINF:8,");
+            res.AppendLine("#EXTINF:" + s.duration + ",");
             res.AppendLine(url.ToString());
           }
           break;

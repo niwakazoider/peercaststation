@@ -41,6 +41,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.XML" />
@@ -49,8 +50,10 @@
   <ItemGroup>
     <Compile Include="AccessController.cs" />
     <Compile Include="Application.cs" />
+    <Compile Include="AppSettingsReader.cs" />
     <Compile Include="Atom.cs" />
     <Compile Include="AtomCollectionExtensions.cs" />
+    <Compile Include="BandwidthChecker.cs" />
     <Compile Include="BroadcastChannel.cs" />
     <Compile Include="Channel.cs" />
     <Compile Include="ChannelCleaner.cs" />

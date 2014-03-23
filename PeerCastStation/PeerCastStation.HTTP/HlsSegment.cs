@@ -1,4 +1,19 @@
-﻿using System;
+﻿// PeerCastStation, a P2P streaming servent.
+// Copyright (C) 2014 @niwakazoider
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,16 +22,17 @@ using PeerCastStation.Core;
 
 namespace PeerCastStation.HTTP
 {
-  class HlsSegment
+  class HLSSegment
   {
-    private static readonly Logger logger = new Logger(typeof(HlsSegment));
+    private static readonly Logger logger = new Logger(typeof(HLSSegment));
     public Channel Channel { get; private set; }
     public string url { get; private set; }
 
-    public HlsSegment(Channel channel, string url)
+    public HLSSegment(Channel channel, string url)
     {
       this.url = url;
       this.Channel = channel;
+      this.Channel.Contents.PacketTimeLimit = TimeSpan.FromSeconds(10);
 
       if (Channel.ExtraMethodContainer.OfType<Segmenter>().Count() == 0)
       {
@@ -26,7 +42,7 @@ namespace PeerCastStation.HTTP
 
     public int GetContentLength()
     {
-      var len = 2147483647;
+      var len = -1;
       var i = GetSequenceFromUrl();
       if (i >= 0)
       {
@@ -112,10 +128,10 @@ namespace PeerCastStation.HTTP
 
       public void addSegment(int sequence, TimeSpan duration, byte[] data)
       {
-        var durationsec = (int) duration.TotalSeconds;
+        var durationsec = (int)duration.TotalSeconds;
         if (durationsec < 1) durationsec = 1;
         segments.Add(new SegmentData(sequence, durationsec, data));
-        if (segments.Count > 7)
+        if (segments.Count > 5)
         {
           segments.RemoveAt(0);
         }
@@ -153,13 +169,14 @@ namespace PeerCastStation.HTTP
         for (int j = 0; j < c.Data.Length; j += 188)
         {
           Array.Copy(c.Data, j, bytes, 0, 188);
-          var packet = new TsPacket(bytes);
-          if (packet.keyframe)
+          var packet = new TSPacket(bytes);
+          //if (packet.keyframe)
+          if (packet.video_block && c.Timestamp.Subtract(keyframetime).TotalSeconds>6)
           {
             if (sequence >= 0)
             {
               addSegment(sequence, c.Timestamp - keyframetime, getCache());
-              logger.Debug("add:" + SegmentIndexToString(getSegmentInfoList()));
+              logger.Debug("add segment:" + SegmentIndexToString(getSegmentInfoList()));
             }
             sequence++;
             keyframetime = c.Timestamp;
@@ -196,7 +213,7 @@ namespace PeerCastStation.HTTP
       }
       return "[" + s.Trim() + "]";
     }
-    
+
   }
 
   public class SegmentData
