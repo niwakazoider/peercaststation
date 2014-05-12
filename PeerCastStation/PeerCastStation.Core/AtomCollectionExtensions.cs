@@ -402,6 +402,11 @@ namespace PeerCastStation.Core
       return GetCollectionFrom(collection, Atom.PCP_BCST);
     }
 
+    public static string GetBcstMsgBody(this IAtomCollection collection)
+    {
+      return GetStringFrom(collection, Atom.PCP_BCST_MSG_BODY);
+    }
+
     public static byte? GetBcstTTL(this IAtomCollection collection)
     {
       return GetByteFrom(collection, Atom.PCP_BCST_TTL);
@@ -655,6 +660,11 @@ namespace PeerCastStation.Core
     public static void SetBcst(this IAtomCollection collection, IList<Atom> value)
     {
       SetAtomTo(collection, new Atom(Atom.PCP_BCST, value));
+    }
+
+    public static void SetBcstMsgBody(this IAtomCollection collection, string value)
+    {
+      SetAtomTo(collection, new Atom(Atom.PCP_BCST_MSG_BODY, value));
     }
 
     public static void SetBcstChannelID(this IAtomCollection collection, Guid value)

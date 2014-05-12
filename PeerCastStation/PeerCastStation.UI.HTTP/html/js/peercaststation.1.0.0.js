@@ -172,5 +172,8 @@ PeerCast = {
   getNewVersions: function(completed) {
     this.postRequest('getNewVersions', null, completed);
   },
+  postChannelMessage: function(channelId, message, completed){
+    this.postRequest('postChannelMessage', { channelId: channelId, message: message }, completed);
+  },
 };
 

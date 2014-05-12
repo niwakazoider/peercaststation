@@ -315,6 +315,20 @@ namespace PeerCastStation.UI.HTTP
         }
       }
 
+      [RPCMethod("postChannelMessage")]
+      private JObject PostChannelMessage(string channelId, string message)
+      {
+        var channel = GetChannel(channelId);
+        if (channel!=null && message!="") {
+          channel.Post(message);
+          if (channel.IsBroadcasting) {
+            channel.OnMessage(message);
+          }
+        }
+        var res = new JObject();
+        return res;
+      }
+
       [RPCMethod("getChannelStatus")]
       private JObject GetChannelStatus(string channelId)
       {

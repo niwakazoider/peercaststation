@@ -394,6 +394,31 @@ var ChannelConnectionViewModel = function(owner, initial_value) {
   };
 };
 
+var PostMessageDialog = new function() {
+  var self = this;
+  var dialog = null;
+  $(document).ready(function() {
+    dialog = $('#postMessageDialog');
+    dialog.modal({show: false});
+    dialog.on('hide', self.onHide);
+    ko.applyBindings(self, dialog.get(0));
+  });
+  self.channelId = ko.observable(null);
+  self.message   = ko.observable(null);
+  self.show = function(channel) {
+    self.channelId(channel.channelId());
+    dialog.modal('show');
+  };
+  self.onPost = function() {
+    PeerCast.postChannelMessage(
+        self.channelId(),
+        self.message(),
+        function() {
+          dialog.modal('hide');
+        });
+  };
+};
+
 var ChannelYellowPageViewModel = function(owner, initial_value) {
   var self = this;
   self.channel      = owner;
@@ -512,6 +537,10 @@ var ChannelViewModel = function(initial_value) {
 
   self.showInfo = function() {
     $('#channelInfo-'+self.channelId()).slideToggle("fast");
+  };
+
+  self.showPostMessageDialog = function() {
+    PostMessageDialog.show(self);
   };
 
   var updateConnections = function() {

@@ -565,6 +565,7 @@ namespace PeerCastStation.PCP
         else if (atom.Name==Atom.PCP_CHAN_INFO)  OnPCPChanInfo(atom);
         else if (atom.Name==Atom.PCP_CHAN_TRACK) OnPCPChanTrack(atom);
         else if (atom.Name==Atom.PCP_BCST)       OnPCPBcst(atom);
+        else if (atom.Name==Atom.PCP_BCST_MSG)   OnPCPMsg(atom);
         else if (atom.Name==Atom.PCP_HOST)       OnPCPHost(atom);
         else if (atom.Name==Atom.PCP_QUIT)       OnPCPQuit(atom);
       }
@@ -730,6 +731,19 @@ namespace PeerCastStation.PCP
 
     protected virtual void OnPCPChanTrack(Atom atom)
     {
+    }
+
+    protected void OnPCPMsg(Atom atom)
+    {
+      var msg = atom.Children.GetBcstMsgBody();
+      if (msg != null) {
+        if(Channel.IsBroadcasting) {
+          Logger.Info("Broadcast BCST MSG: {0}", msg);
+          Channel.Post(msg);
+        }else{
+          Logger.Info("Relaying BCST MSG: {0}", msg);
+        }
+      }
     }
 
     protected virtual void OnPCPBcst(Atom atom)

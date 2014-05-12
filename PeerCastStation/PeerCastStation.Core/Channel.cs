@@ -55,6 +55,7 @@ namespace PeerCastStation.Core
     private List<Host> nodes = new List<Host>();
     private Content contentHeader = null;
     private ContentCollection contents = new ContentCollection();
+    private List<string> messages = new List<string>();
     private System.Diagnostics.Stopwatch uptimeTimer = new System.Diagnostics.Stopwatch();
     private int streamID = 0;
     protected ReaderWriterLockSlim readWriteLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
@@ -338,6 +339,24 @@ namespace PeerCastStation.Core
     }
 
     /// <summary>
+    /// 保持しているメッセージのリストを取得します
+    /// </summary>
+    public List<string> Messages { get { return messages; } }
+
+    /// <summary>
+    /// メッセージを受信した時に発生するイベントです
+    /// </summary>
+    public event EventHandler MessageReceived;
+    private void OnMessageReceived()
+    {
+      var events = ReadLock(() => MessageReceived);
+      if (events != null)
+      {
+        events(this, new EventArgs());
+      }
+    }
+
+    /// <summary>
     /// コンテントが追加および削除された時に発生するイベントです
     /// </summary>
     public event EventHandler ContentChanged;
@@ -472,6 +491,17 @@ namespace PeerCastStation.Core
         });
       }
     }
+    
+    public void OnMessage(string message)
+    {
+      WriteLock(() => {
+        messages.Add(message);
+        if(message.Length>1000){
+          message.Remove(0);
+        }
+      });
+      OnMessageReceived();
+    }
 
     private void SourceStream_Stopped(object sender, StreamStoppedEventArgs args)
     {
@@ -597,6 +627,35 @@ namespace PeerCastStation.Core
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
       };
+    }
+        
+    /// <summary>
+    /// メッセージを送信します
+    /// </summary>
+    /// <param name="message">送信するメッセージ</param>
+    public void Post(string message)
+    {
+      if (IsBroadcasting) {
+        Broadcast(null, CreateMessagePacket(BroadcastGroup.Relays, message), BroadcastGroup.Relays);
+      }
+      else {
+        Broadcast(null, CreateMessagePacket(BroadcastGroup.Trackers, message), BroadcastGroup.Trackers);
+      }
+    }
+
+    public Atom CreateMessagePacket(BroadcastGroup group, string message)
+    {
+      var msgs = new AtomCollection();
+      msgs.SetBcstMsgBody(message);
+      var bcst = new AtomCollection();
+      bcst.SetBcstFrom(PeerCast.SessionID);
+      bcst.SetBcstGroup(group);
+      bcst.SetBcstHops(0);
+      bcst.SetBcstTTL(12);
+      //PCPVersion.SetBcstVersion(bcst);
+      bcst.SetBcstChannelID(ChannelID);
+      bcst.Add(new Atom(Atom.PCP_BCST_MSG, msgs));
+      return new Atom(Atom.PCP_BCST, bcst);
     }
   }
 
