@@ -740,6 +740,7 @@ namespace PeerCastStation.PCP
         if(Channel.IsBroadcasting) {
           Logger.Info("Broadcast BCST MSG: {0}", msg);
           Channel.Post(msg);
+          Channel.OnMessage(msg);
         }else{
           Logger.Info("Relaying BCST MSG: {0}", msg);
         }
