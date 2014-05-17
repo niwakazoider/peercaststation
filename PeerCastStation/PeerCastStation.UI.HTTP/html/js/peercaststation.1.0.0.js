@@ -158,6 +158,12 @@ PeerCast = {
   clearLog: function(completed) {
     this.postRequest('clearLog', null, completed);
   },
+  getMessage: function(from, maxLines, completed) {
+    this.postRequest('getMessage', { from: from, maxLines: maxLines }, completed);
+  },
+  clearMessage: function(completed) {
+    this.postRequest('clearMessage', null, completed);
+  },
 
   getNotificationMessages: function(completed) {
     this.postRequest('getNotificationMessages', null, completed);

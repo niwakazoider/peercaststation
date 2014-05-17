@@ -19,6 +19,7 @@ namespace PeerCastStation.UI.HTTP
     override public string Name { get { return "HTTP API Host UI"; } }
     public LogWriter LogWriter { get { return logWriter; } }
     private LogWriter logWriter = new LogWriter(1000);
+    private LogWriter messageWriter = new LogWriter(1000);
     private Updater updater = new Updater();
     private IEnumerable<VersionDescription> newVersions = Enumerable.Empty<VersionDescription>();
 
@@ -33,6 +34,10 @@ namespace PeerCastStation.UI.HTTP
     protected override void OnStart()
     {
       Logger.AddWriter(logWriter);
+      Application.PeerCast.ChannelAdded += (sender, args) =>
+      {
+        args.Channel.MessageReceived += OnChannelMessagePosted;
+      };
       updater.NewVersionFound += OnNewVersionFound;
       updater.CheckVersion();
     }
@@ -40,6 +45,19 @@ namespace PeerCastStation.UI.HTTP
     protected override void OnStop()
     {
       Logger.RemoveWriter(logWriter);
+      Application.PeerCast.ChannelRemoved += (sender, args) =>
+      {
+        args.Channel.MessageReceived -= OnChannelMessagePosted;
+      };
+    }
+
+    public void OnChannelMessagePosted(object sender, EventArgs args)
+    {
+      var channel = (Channel)sender;
+      var dt = DateTime.Now;
+      var time = dt.Hour + ":" + dt.Minute;
+      var msg = channel.ChannelInfo.Name + " (" + time + ") : " + channel.Messages[channel.Messages.Count - 1];
+      messageWriter.WriteLine(msg);
     }
 
     protected override void OnDetach()
@@ -263,11 +281,11 @@ namespace PeerCastStation.UI.HTTP
       private JToken GetLog(int? from, int? maxLines)
       {
         var lines = owner.LogWriter.Lines;
-        var logs  = lines.Skip(from ?? 0).Take(maxLines ?? lines.Count()).ToArray();
+        var logs = lines.Skip(from ?? 0).Take(maxLines ?? lines.Count()).ToArray();
         var res = new JObject();
-        res["from"]  = from ?? 0;
+        res["from"] = from ?? 0;
         res["lines"] = logs.Length;
-        res["log"]   = String.Join("\n", logs);
+        res["log"] = String.Join("\n", logs);
         return res;
       }
 
@@ -276,6 +294,25 @@ namespace PeerCastStation.UI.HTTP
       {
         owner.LogWriter.Flush();
         owner.LogWriter.Clear();
+      }
+
+      [RPCMethod("getMessage")]
+      private JToken GetMessage(int? from, int? maxLines)
+      {
+        var lines = owner.messageWriter.Lines;
+        var messages = lines.Skip(from ?? 0).Take(maxLines ?? lines.Count()).ToArray();
+        var res = new JObject();
+        res["from"] = from ?? 0;
+        res["lines"] = messages.Length;
+        res["message"] = String.Join("\n", messages);
+        return res;
+      }
+
+      [RPCMethod("clearMessage")]
+      private void ClearMessage()
+      {
+        owner.messageWriter.Flush();
+        owner.messageWriter.Clear();
       }
 
       [RPCMethod("getChannels")]
@@ -323,6 +360,7 @@ namespace PeerCastStation.UI.HTTP
           channel.Post(message);
           if (channel.IsBroadcasting) {
             channel.OnMessage(message);
+            Logger.Debug("Send BCST MSG: {0}", message);
           }
         }
         var res = new JObject();

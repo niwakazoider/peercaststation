@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>ログ - PeerCastStation </title>
+    <link type="text/css" href="/Content/bootstrap.min.css" rel="stylesheet" />
+    <link type="text/css" href="css/index.css" rel="stylesheet" />
+    <script type="text/javascript" src="/Scripts/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="/Scripts/jquery.json-2.4.min.js"></script>
+    <script type="text/javascript" src="/Scripts/knockout-2.2.0.js"></script>
+    <script type="text/javascript" src="/Scripts/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/peercaststation.1.0.0.js"></script>
+    <script type="text/javascript" src="js/common.js"></script>
+    <script type="text/javascript" src="js/messages.js"></script>
+    <script type="text/javascript">
+      $(function() {
+        $('.alert').alert();
+        MessagesViewModel.bind($('#messages').get(0));
+        UIViewModel.bind($('#header').get(0));
+      });
+    </script>
+    <script type="text/html" id='alert'>
+      <div class="alert alert-block fade in" data-bind="css:'alert-'+type, click:clicked">
+        <a class="close" data-dismiss="alert" data-bind="css:'alert-'+type, click:close" href="#">&times;</a>
+        <h4 data-bind="text:title"></h4>
+        <p data-bind="text:message"></p>
+      </div>
+    </script>
+  </head>
+  <body>
+    <div id="header">
+      <div class="alerts" data-bind="template: { name: 'alert', foreach: alerts }"></div>
+      <div class="navbar">
+        <div class="navbar-inner">
+          <div class="container-fluid">
+            <a class="brand" href="#">PeerCastStation</a>
+            <ul class="nav">
+              <li><a href="index.html">情報</a></li>
+              <li><a href="relays.html">リレー</a></li>
+              <li><a href="settings.html">設定</a></li>
+              <li><a href="logs.html">ログ</a></li>
+              <li class="active"><a href="messages.html">メッセージ</a></li>
+              <li><a href="/help/index.html">ヘルプ</a></li>
+            </ul>
+            <a class="btn btn-warning pull-right" data-bind="css:{hidden:!newVersionAvailable()}" href="update.html" target="_blank">バージョンアップ</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid" id="messages">
+      <h1>メッセージ</h1>
+      <div class="row-fluid">
+        <div class="span11">
+          <select style="visibility:hidden">
+            <option value="0">0</option>
+          </select>
+        </div>
+        <div class="span1">
+          <button class="btn" data-bind="click:clear">クリア</button>
+        </div>
+      </div>
+      <div class="row-fluid">
+        <pre data-bind="text:messages"></pre>
+      </div>
+    </div>
+  </body>
+</html>
+
