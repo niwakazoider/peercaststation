@@ -68,11 +68,12 @@ namespace PeerCastStation.WPF.ChannelLists.Dialogs
     private void OnPostMessage()
     {
       var channel = GetChannel();
-      if (channel != null) {
+      if (channel != null && messageText != "") {
         channel.Post(messageText);
         if (channel.IsBroadcasting) {
           channel.OnMessage(messageText);
         }
+        MessageText = "";
       }
     }
 

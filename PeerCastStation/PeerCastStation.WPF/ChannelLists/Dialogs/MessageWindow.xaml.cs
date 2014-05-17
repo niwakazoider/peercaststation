@@ -1,5 +1,5 @@
 ﻿// PeerCastStation, a P2P streaming servent.
-// Copyright (C) 2013 pethitto (pethitto@gmail.com)
+// Copyright (C) 2013 PROGRE (pethitto@gmail.com)
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ namespace PeerCastStation.WPF.ChannelLists.Dialogs
 
     private void Button_Click(object sender, RoutedEventArgs e)
     {
-      Close();
+      //Close();
     }
   }
 }

@@ -16,8 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
 <Window x:Class="PeerCastStation.WPF.ChannelLists.Dialogs.MessageWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="メッセージ" Width="360" Height="Auto"
-        WindowStartupLocation="CenterOwner"
+        Title="{Binding ChannelName}" Width="360" Height="Auto"
         ResizeMode="NoResize"
         SizeToContent="Height"
         ShowInTaskbar="False"
@@ -36,17 +35,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Label   Grid.Row="0" Grid.Column="0" Content="{Binding ChannelName}"/>
         <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding MessageText}"/>
     </Grid>
     <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="4*"/>
-        <ColumnDefinition Width="2*"/>
-        <ColumnDefinition Width="2*"/>
+        <ColumnDefinition Width="3*"/>
+        <ColumnDefinition Width="1*"/>
       </Grid.ColumnDefinitions>
       <Button Grid.Column="1" Content="送信" Click="Button_Click" Command="{Binding PostMessage}" IsDefault="True"/>
-      <Button Grid.Column="2" Content="キャンセル" Click="Button_Click" IsCancel="True"/>
     </Grid>
   </StackPanel>
 </Window>

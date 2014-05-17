@@ -52,10 +52,9 @@ namespace PeerCastStation.WPF.ChannelLists
     {
       var dialog = new MessageWindow
       {
-        Owner = Window.GetWindow(this),
         DataContext = ((ChannelListViewModel)DataContext).Message
       };
-      dialog.ShowDialog();
+      dialog.Show();
     }
   }
 }
