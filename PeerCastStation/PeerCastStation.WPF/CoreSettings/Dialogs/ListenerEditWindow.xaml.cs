@@ -1,5 +1,5 @@
 ﻿// PeerCastStation, a P2P streaming servent.
-// Copyright (C) 2013 PROGRE (djyayutto@gmail.com)
+// Copyright (C) 2014 pethitto (pethitto@gmail.com)
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,14 +34,31 @@ namespace PeerCastStation.WPF.CoreSettings.Dialogs
   /// </summary>
   public partial class ListenerEditWindow : Window
   {
+    Boolean init = false;
     public ListenerEditWindow()
     {
       InitializeComponent();
+      init = true;
     }
 
     private void Button_Click(object sender, RoutedEventArgs e)
     {
       Close();
+    }
+
+    private void IntegerUpDown_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
+    {
+      if (init) {
+        var d = (IntegerUpDown)sender;
+        port.Text = e.NewValue.ToString();
+      }
+    }
+
+    private void IntegerUpDown_LostFocus(object sender, RoutedEventArgs e)
+    {
+      var d = (IntegerUpDown)sender;
+      port.Text = d.Value.ToString();
+      port.OnApplyTemplate();
     }
   }
 }
