@@ -59,6 +59,9 @@ namespace PeerCastStation.WPF
     private readonly LogViewModel log = new LogViewModel();
     public LogViewModel Log { get { return log; } }
 
+    private readonly MessageViewModel message;
+    public MessageViewModel Message { get { return message; } }
+
     internal VersionInfoViewModel VersionInfo
     {
       get { return new VersionInfoViewModel(application); }
@@ -70,7 +73,8 @@ namespace PeerCastStation.WPF
       var peerCast = application.PeerCast;
       channelList = new ChannelListViewModel(peerCast);
       setting = new SettingViewModel(application);
-
+      message = new MessageViewModel(peerCast);
+      
       timer = new DispatcherTimer(
         TimeSpan.FromSeconds(1),
         DispatcherPriority.Normal, (sender, e) => UpdateStatus(),
@@ -92,6 +96,7 @@ namespace PeerCastStation.WPF
       OnPropertyChanged("PortStatus");
       channelList.UpdateChannelList();
       log.UpdateLog();
+      message.UpdateLog();
     }
 
     private void OnChannelChanged(object sender, EventArgs e)

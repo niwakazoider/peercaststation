@@ -64,7 +64,17 @@ namespace PeerCastStation.WPF.ChannelLists
     {
       get { return new BroadcastViewModel(peerCast); }
     }
-
+    internal Dialogs.MessageViewModel Message
+    {
+      get { 
+        var model = new MessageViewModel(peerCast);
+        model.ChannelID = selectedChannel.ChannelID;
+        model.ChannelName = selectedChannel.Name;
+        return model;
+      }
+    }
+    private readonly Command postMessage;
+    public Command PostMessage { get { return postMessage; } }
     private readonly Command openContactUrl;
     public Command OpenContactUrl { get { return openContactUrl; } }
     private readonly Command copyStreamUrl;
@@ -97,6 +107,9 @@ namespace PeerCastStation.WPF.ChannelLists
         () => IsChannelSelected);
       bump = new Command(
         () => selectedChannel.Bump(),
+        () => IsChannelSelected);
+      postMessage = new Command(
+        () => selectedChannel.ShowPostMessageDialog(),
         () => IsChannelSelected);
       openContactUrl = new Command(() => {
           var uri = selectedChannel.ContactUri;
@@ -165,6 +178,7 @@ namespace PeerCastStation.WPF.ChannelLists
       play.OnCanExecuteChanged();
       close.OnCanExecuteChanged();
       bump.OnCanExecuteChanged();
+      postMessage.OnCanExecuteChanged();
       openContactUrl.OnCanExecuteChanged();
       copyStreamUrl.OnCanExecuteChanged();
       copyContactUrl.OnCanExecuteChanged();

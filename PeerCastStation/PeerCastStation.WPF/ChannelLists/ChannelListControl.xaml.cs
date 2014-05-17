@@ -47,5 +47,15 @@ namespace PeerCastStation.WPF.ChannelLists
         list.UpdateSelectedChannelRelayTree();
       }
     }
+
+    private void PostMessageButton_Click(object sender, RoutedEventArgs e)
+    {
+      var dialog = new MessageWindow
+      {
+        Owner = Window.GetWindow(this),
+        DataContext = ((ChannelListViewModel)DataContext).Message
+      };
+      dialog.ShowDialog();
+    }
   }
 }

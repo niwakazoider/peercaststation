@@ -71,6 +71,10 @@
     <Compile Include="ChannelLists\Dialogs\BroadcastWindow.xaml.cs">
       <DependentUpon>BroadcastWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ChannelLists\Dialogs\MessageWindow.xaml.cs">
+      <DependentUpon>MessageWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ChannelLists\Dialogs\MessageViewModel.cs" />
     <Compile Include="ChannelLists\ConnectionLists\ConnectionListControl.xaml.cs">
       <DependentUpon>ConnectionListControl.xaml</DependentUpon>
     </Compile>
@@ -112,6 +116,10 @@
     <Compile Include="Logs\LogViewModel.cs" />
     <Compile Include="MainViewModel.cs" />
     <Compile Include="CoreSettings\SettingViewModel.cs" />
+    <Compile Include="Messages\MessageViewModel.cs" />
+    <Compile Include="Messages\MessageControl.xaml.cs">
+      <DependentUpon>MessageControl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="NotifyIconManager.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="CoreSettings\SettingControl.xaml.cs">
@@ -140,6 +148,10 @@
     <Page Include="ChannelLists\ConnectionLists\ConnectionListControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ChannelLists\Dialogs\MessageWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="ChannelLists\RelayTrees\RelayTreeControl.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -186,6 +198,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\VersionInfoWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Messages\MessageControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

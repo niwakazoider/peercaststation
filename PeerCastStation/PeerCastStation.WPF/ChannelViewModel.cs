@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using PeerCastStation.Core;
 using System.ComponentModel;
@@ -80,6 +81,10 @@ namespace PeerCastStation.WPF
     public void Bump()
     {
       Model.Reconnect();
+    }
+
+    public void ShowPostMessageDialog()
+    {
     }
 
     public Guid ChannelID {
