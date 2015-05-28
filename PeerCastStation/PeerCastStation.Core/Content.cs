@@ -95,9 +95,11 @@ namespace PeerCastStation.Core
     private long serial = 0;
     private SortedList<ContentKey, Content> list = new SortedList<ContentKey, Content>();
     public TimeSpan PacketTimeLimit { get; set; }
+    public TimeSpan PacketCacheTimeLimit { get; set; }
     public ContentCollection()
     {
       PacketTimeLimit = TimeSpan.FromSeconds(5);
+      PacketCacheTimeLimit = TimeSpan.FromMinutes(5);
     }
 
     public event EventHandler ContentChanged;
@@ -131,7 +133,7 @@ namespace PeerCastStation.Core
           (
            (list.First().Key.Stream<item.Stream) ||
            (list.First().Key.Stream==item.Stream &&
-            item.Timestamp-list.First().Key.Timestamp>PacketTimeLimit)
+            item.Timestamp-list.First().Key.Timestamp>PacketCacheTimeLimit)
           )
         ) {
           list.RemoveAt(0);
@@ -192,7 +194,14 @@ namespace PeerCastStation.Core
     public Content GetOldest(int stream)
     {
       lock (list) {
-        return list.Values.Where(c => c.Stream>=stream).FirstOrDefault();
+        return list.Values.Where(c => c.Stream>=stream).FirstOrDefault(c => Newest.Timestamp-c.Timestamp<PacketTimeLimit);
+      }
+    }
+    public Content GetOldestInTime(int stream, int seconds)
+    {
+      lock (list) {
+        var oldest = list.Values.Where(c => c.Stream>=stream).FirstOrDefault(c => (Newest.Timestamp-c.Timestamp)<TimeSpan.FromSeconds(seconds));
+        return (oldest == null) ? Newest : oldest;
       }
     }
 
@@ -213,7 +222,7 @@ namespace PeerCastStation.Core
     public Content Oldest
     {
       get {
-        return list.Values.FirstOrDefault();
+        return list.Values.FirstOrDefault(c => Newest.Timestamp-c.Timestamp<PacketTimeLimit);
       }
     }
 

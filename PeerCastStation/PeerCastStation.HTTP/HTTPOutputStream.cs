@@ -302,6 +302,7 @@ namespace PeerCastStation.HTTP
     private Content headerPacket = null;
     private List<Content> contentPacketQueue = new List<Content>();
     private Content sentPacket;
+    private Channel channel;
 
     /// <summary>
     /// 元になるストリーム、チャンネル、リクエストからHTTPOutputStreamを初期化します
@@ -329,6 +330,25 @@ namespace PeerCastStation.HTTP
         request.Method,
         request.Uri);
       this.request = request;
+      this.channel = channel;
+    }
+
+    private int GetShiftTime(Uri request_uri)
+    {
+        int sec = channel.Contents.PacketTimeLimit.Seconds;
+        foreach (Match param in Regex.Matches(request_uri.Query, @"(&|\?)([^&=]+)=([^&=]+)"))
+        {
+            if (Uri.UnescapeDataString(param.Groups[2].Value) == "stime")
+            {
+                string stimestr = Uri.UnescapeDataString(param.Groups[3].Value);
+                int stime = sec;
+                if (int.TryParse(stimestr, out stime) && stime >= 0){
+                    sec = stime;
+                    break;
+                }
+            }
+        }
+        return sec;
     }
 
     private void OnContentChanged(object sender, EventArgs args)
@@ -344,7 +364,15 @@ namespace PeerCastStation.HTTP
           contentPacketQueue.AddRange(Channel.Contents.GetNewerContents(headerPacket.Stream, sentPacket.Timestamp, sentPacket.Position));
         }
         else {
-          contentPacketQueue.AddRange(Channel.Contents.GetNewerContents(headerPacket.Stream, headerPacket.Timestamp, headerPacket.Position));
+          var newest = Channel.Contents.GetNewest(headerPacket.Stream);
+          var oldest = Channel.Contents.GetOldest(headerPacket.Stream); 
+          var shifttime = GetShiftTime(request.Uri);
+          Logger.Debug("shifttime={0}", shifttime);
+          var first = Channel.Contents.GetOldestInTime(headerPacket.Stream, shifttime);
+          if (first != null) {
+              Logger.Debug("newest={0}, oldest={1}, first={2}", newest.Timestamp, oldest.Timestamp, first.Timestamp);
+              contentPacketQueue.Add(first);
+          }
         }
       }
     }
