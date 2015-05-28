@@ -178,7 +178,7 @@ namespace PeerCastStation.HTTP
         IPAddress addr;
         if (IPAddress.TryParse(ipv6addr.Groups[1].Value, out addr) &&
             addr.AddressFamily==System.Net.Sockets.AddressFamily.InterNetworkV6) {
-          return addr.ToString();
+          return String.Format("[{0}]", addr.ToString());
         }
       }
       if (hostaddr.Success) {
@@ -197,18 +197,7 @@ namespace PeerCastStation.HTTP
           break;
         }
       }
-      if (tip!=null) {
-        var endpoint = ParseEndPoint(tip);
-        if (endpoint!=null) {
-          return new Uri(String.Format("pcp://{0}/{1}", endpoint, channel_id));
-        }
-        else {
-          return null;
-        }
-      }
-      else {
-        return null;
-      }
+      return OutputStreamBase.CreateTrackerUri(channel_id, tip);
     }
 
     /// <summary>

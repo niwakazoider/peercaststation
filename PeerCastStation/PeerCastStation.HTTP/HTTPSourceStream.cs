@@ -136,7 +136,13 @@ namespace PeerCastStation.HTTP
     {
       try {
         client = new TcpClient();
-        client.Connect(source.DnsSafeHost, source.Port);
+        if (source.HostNameType==UriHostNameType.IPv4 ||
+            source.HostNameType==UriHostNameType.IPv6) {
+          client.Connect(IPAddress.Parse(source.Host), source.Port);
+        }
+        else {
+          client.Connect(source.DnsSafeHost, source.Port);
+        }
         var stream = client.GetStream();
         var connection = new StreamConnection(stream, stream);
         connection.ReceiveTimeout = 10000;
@@ -178,9 +184,10 @@ namespace PeerCastStation.HTTP
       }
       var request = String.Format(
           "GET {0} HTTP/1.1\r\n" +
-          "Host:{1}\r\n" +
-          "User-Agent:WMPlayer ({2})\r\n" +
-          "connection:close\r\n" +
+          "Host: {1}\r\n" +
+          "User-Agent: NSPlayer ({2})\r\n" +
+          "Connection: close\r\n" +
+          "Pragma: stream-switch-count=2\r\n" +
           "\r\n",
           SourceUri.PathAndQuery,
           host,

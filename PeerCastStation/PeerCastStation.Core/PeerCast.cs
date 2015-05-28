@@ -83,12 +83,11 @@ namespace PeerCastStation.Core
 
     private void ReplaceCollection<T>(ref T collection, Func<T,T> newcollection_func) where T : class
     {
-      bool replaced = false;
-      while (!replaced) {
-        var prev = collection;
-        var new_collection = newcollection_func(collection);
-        System.Threading.Interlocked.CompareExchange(ref collection, new_collection, prev);
-        replaced = Object.ReferenceEquals(collection, new_collection);
+    retry:
+      var prev = collection;
+      var new_collection = newcollection_func(prev);
+      if (!Object.ReferenceEquals(Interlocked.CompareExchange(ref collection, new_collection, prev), prev)) {
+        goto retry;
       }
     }
 
@@ -122,7 +121,8 @@ namespace PeerCastStation.Core
     /// <summary>
     /// チャンネル管理オブジェクトのリストを取得します
     /// </summary>
-    public IList<IChannelMonitor> ChannelMonitors { get; private set; }
+    public ReadOnlyCollection<IChannelMonitor> ChannelMonitors { get { return channelMonitors.AsReadOnly(); } }
+    private List<IChannelMonitor> channelMonitors = new List<IChannelMonitor>();
 
     /// <summary>
     /// チャンネルが追加された時に呼び出されます。
@@ -278,13 +278,14 @@ namespace PeerCastStation.Core
     /// </summary>
     /// <param name="protocol">YPクライアントのプロトコル名</param>
     /// <param name="name">YPの名前</param>
-    /// <param name="uri">YPのURI</param>
-    public IYellowPageClient AddYellowPage(string protocol, string name, Uri uri)
+    /// <param name="announce_uri">YPの掲載先URI</param>
+    /// <param name="channels_uri">YPのチャンネル一覧取得先URI</param>
+    public IYellowPageClient AddYellowPage(string protocol, string name, Uri announce_uri, Uri channels_uri)
     {
       IYellowPageClient yp = null;
       foreach (var factory in YellowPageFactories) {
         if (factory.Protocol==protocol) {
-          yp = factory.Create(name, uri);
+          yp = factory.Create(name, announce_uri, channels_uri);
           break;
         }
       }
@@ -340,7 +341,6 @@ namespace PeerCastStation.Core
       this.SourceStreamFactories = new List<ISourceStreamFactory>();
       this.OutputStreamFactories = new List<IOutputStreamFactory>();
       this.ContentReaderFactories = new List<IContentReaderFactory>();
-      this.ChannelMonitors = new List<IChannelMonitor>();
       foreach (var addr in Dns.GetHostAddresses(Dns.GetHostName())) {
         switch (addr.AddressFamily) {
         case AddressFamily.InterNetwork:
@@ -371,6 +371,24 @@ namespace PeerCastStation.Core
       StartMonitor();
     }
 
+		public void AddChannelMonitor(IChannelMonitor monitor)
+		{
+			ReplaceCollection(ref channelMonitors, orig => {
+				var new_monitors = new List<IChannelMonitor>(orig);
+				new_monitors.Add(monitor);
+				return new_monitors;
+			});
+		}
+
+		public void RemoveChannelMonitor(IChannelMonitor monitor)
+		{
+			ReplaceCollection(ref channelMonitors, orig => {
+				var new_monitors = new List<IChannelMonitor>(orig);
+				new_monitors.Remove(monitor);
+				return new_monitors;
+			});
+		}
+
     private AutoResetEvent stoppedEvent = new AutoResetEvent(false);
     private RegisteredWaitHandle monitorThreadPool = null;
     private void StartMonitor()
@@ -380,10 +398,8 @@ namespace PeerCastStation.Core
           monitorThreadPool.Unregister(stoppedEvent);
         }
         else {
-          lock (ChannelMonitors) {
-            foreach (var monitor in ChannelMonitors) {
-              monitor.OnTimer();
-            }
+          foreach (var monitor in ChannelMonitors) {
+            monitor.OnTimer();
           }
         }
       }, null, 5000, false);

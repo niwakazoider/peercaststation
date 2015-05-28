@@ -41,11 +41,12 @@ namespace PeerCastStation.Main
         args.Cancel = true;
         Stop();
       };
+      settings.Load();
       foreach (var plugin in Plugins) {
         plugin.Attach(this);
       }
-      peerCast.ChannelMonitors.Add(new ChannelCleaner(peerCast));
-      peerCast.ChannelMonitors.Add(new ChannelNotifier(this));
+      peerCast.AddChannelMonitor(new ChannelCleaner(peerCast));
+      peerCast.AddChannelMonitor(new ChannelNotifier(this));
       LoadSettings();
       foreach (var plugin in Plugins) {
         plugin.Start();
@@ -106,7 +107,6 @@ namespace PeerCastStation.Main
 
     void LoadSettings()
     {
-      settings.Load();
       PeerCastStationSettings s;
       if (settings.Contains(typeof(PeerCastStationSettings))) {
         s = settings.Get<PeerCastStationSettings>();
@@ -174,7 +174,7 @@ namespace PeerCastStation.Main
         if (s.YellowPages!=null) {
           foreach (var yellowpage in s.YellowPages) {
             try {
-              peerCast.AddYellowPage(yellowpage.Protocol, yellowpage.Name, yellowpage.Uri);
+              peerCast.AddYellowPage(yellowpage.Protocol, yellowpage.Name, yellowpage.Uri, yellowpage.ChannelsUri);
             }
             catch (ArgumentException e) {
               logger.Error(e);
@@ -221,7 +221,8 @@ namespace PeerCastStation.Main
         new PeerCastStationSettings.YellowPageSettings {
           Protocol = yellowpage.Protocol,
           Name     = yellowpage.Name,
-          Uri      = yellowpage.Uri,
+          Uri      = yellowpage.AnnounceUri,
+          ChannelsUri = yellowpage.ChannelsUri,
         }
       ).ToArray();
       settings.Get<ChannelCleanerSettings>().InactiveLimit = ChannelCleaner.InactiveLimit;

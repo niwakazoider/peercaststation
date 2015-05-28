@@ -166,7 +166,7 @@ namespace PeerCastStation.PCP
         remoteEndPoint = (IPEndPoint)client.Client.RemoteEndPoint;
         var stream = client.GetStream();
         var connection = new StreamConnection(stream, stream);
-        connection.ReceiveTimeout = 10000;
+        connection.ReceiveTimeout = 30000;
         connection.SendTimeout    = 8000;
         Logger.Debug("Connected: {0}", endpoint);
         return connection;
@@ -567,7 +567,21 @@ namespace PeerCastStation.PCP
 
     protected void OnPCPChanInfo(Atom atom)
     {
-      Channel.ChannelInfo = new ChannelInfo(atom.Children);
+      var channel_info = new ChannelInfo(atom.Children);
+      var content_type = channel_info.ContentType;
+      if (content_type==null || content_type=="UNKNOWN") {
+        var header = Channel.ContentHeader;
+        string mime_type = null;
+        if (header!=null &&
+            PeerCast.ContentReaderFactories.Any(
+              factory => factory.TryParseContentType(header.Data, out content_type, out mime_type))) {
+          var new_info = new AtomCollection(atom.Children);
+          new_info.SetChanInfoType(content_type);
+          new_info.SetChanInfoStreamType(mime_type);
+          channel_info = new ChannelInfo(new_info);
+        }
+      }
+      Channel.ChannelInfo = channel_info;
       BroadcastHostInfo();
     }
 
@@ -810,11 +824,12 @@ namespace PeerCastStation.PCP
       var rnd = new Random();
       var res = GetConnectableNodes().OrderByDescending(n =>
         (IsSiteLocal(n) ? 8000 : 0) +
-        ( n.IsReceiving ? 4000 : 0) +
-        (!n.IsRelayFull ? 2000 : 0) +
-        (Math.Max(10-n.Hops, 0)*100) +
-        (n.RelayCount*10) +
-        rnd.NextDouble()
+        rnd.NextDouble() * (
+          ( n.IsReceiving ? 4000 : 0) +
+          (!n.IsRelayFull ? 2000 : 0) +
+          (Math.Max(10-n.Hops, 0)*100) +
+          (n.RelayCount*10)
+        )
       ).DefaultIfEmpty().First();
       if (res!=null) {
         var uri = CreateHostUri(res);

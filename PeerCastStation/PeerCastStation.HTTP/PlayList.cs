@@ -97,7 +97,14 @@ namespace PeerCastStation.HTTP
         if (c.ChannelInfo.URL!=null) {
           contact_url = c.ChannelInfo.URL;
         }
-        var stream_url = new Uri(baseuri, c.ChannelID.ToString("N").ToUpper() + c.ChannelInfo.ContentExtension);
+        var stream_url = new UriBuilder(baseuri);
+        stream_url.Scheme = "mms";
+        if (stream_url.Path[stream_url.Path.Length-1]!='/') {
+          stream_url.Path += '/';
+        }
+        stream_url.Path +=
+          c.ChannelID.ToString("N").ToUpper() +
+          c.ChannelInfo.ContentExtension;
         xml.WriteStartElement("Entry");
         xml.WriteElementString("Title", name);
         if (contact_url!=null && contact_url!="") {
@@ -106,7 +113,7 @@ namespace PeerCastStation.HTTP
           xml.WriteEndElement();
         }
         xml.WriteStartElement("Ref");
-        xml.WriteAttributeString("href", stream_url.ToString());
+        xml.WriteAttributeString("href", stream_url.Uri.ToString());
         xml.WriteEndElement();
         xml.WriteEndElement();
       }
@@ -114,7 +121,7 @@ namespace PeerCastStation.HTTP
       xml.Close();
       var res = stream.ToString();
       try {
-        return System.Text.Encoding.Default.GetBytes(res);
+        return System.Text.Encoding.GetEncoding(932).GetBytes(res);
       }
       catch (System.Text.EncoderFallbackException) {
         return System.Text.Encoding.UTF8.GetBytes(res);
