@@ -215,14 +215,18 @@ namespace PeerCastStation.Core
     public Content Newest
     {
       get {
-        return list.Values.LastOrDefault();
+        lock (list) {
+          return list.Values.LastOrDefault();
+        }
       }
     }
 
     public Content Oldest
     {
       get {
-        return list.Values.FirstOrDefault(c => Newest.Timestamp-c.Timestamp<PacketTimeLimit);
+        lock (list) {
+          return list.Values.FirstOrDefault(c => Newest.Timestamp-c.Timestamp<PacketTimeLimit);
+        }
       }
     }
 
