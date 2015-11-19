@@ -211,6 +211,10 @@ namespace PeerCastStation.FLV.RTMP
 				if (headerPacket==null) return;
 				IEnumerable<Content> contents;
 				contents = Channel.Contents.GetNewerContents(lastPacket.Stream, lastPacket.Timestamp, lastPacket.Position);
+				if (lastPacket==headerPacket && contents.Count()>0) {
+					lastPacket = contents.LastOrDefault();
+					contents = Enumerable.Empty<Content>();
+				}
 				foreach (var content in contents) {
 					PostContent(content);
 					lastPacket = content;

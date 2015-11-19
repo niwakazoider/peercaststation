@@ -521,6 +521,12 @@ namespace PeerCastStation.HTTP
           }
           if (sentHeader!=null) {
             lock (contentPacketQueue) {
+              if (sentPacket==sentHeader && Channel.ChannelInfo.ContentType=="FLV") {
+                if(contentPacketQueue.Count>0){
+                  sentPacket = contentPacketQueue[contentPacketQueue.Count-1];
+                  contentPacketQueue.Clear();
+                }
+              }
               foreach (var c in contentPacketQueue) {
                 if (HasError) break;
                 if (c.Timestamp>sentPacket.Timestamp ||

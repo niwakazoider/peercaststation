@@ -93,6 +93,7 @@ namespace PeerCastStation.Core
     }
 
     private long serial = 0;
+    private long position = -1;
     private SortedList<ContentKey, Content> list = new SortedList<ContentKey, Content>();
     public TimeSpan PacketTimeLimit { get; set; }
     public ContentCollection()
@@ -120,10 +121,14 @@ namespace PeerCastStation.Core
       bool added = false;
       lock (list) {
         try {
-          item.Serial = serial;
-          list.Add(new ContentKey(item.Stream, item.Timestamp, item.Position), item);
-          serial += 1;
-          added = true;
+          if (item.Position > position)
+          {
+            item.Serial = serial;
+            list.Add(new ContentKey(item.Stream, item.Timestamp, item.Position), item);
+            serial += 1;
+            added = true;
+            position = item.Position;
+          }
         }
         catch (ArgumentException) {}
         while (
