@@ -94,11 +94,18 @@ namespace PeerCastStation.Core
 
     private long serial = 0;
     private long position = -1;
+    private Content backPacket = null;
     private SortedList<ContentKey, Content> list = new SortedList<ContentKey, Content>();
     public TimeSpan PacketTimeLimit { get; set; }
     public ContentCollection()
     {
       PacketTimeLimit = TimeSpan.FromSeconds(5);
+    }
+
+    public event EventHandler ContentLooped;
+    private void OnContentLooped()
+    {
+      if (ContentLooped!=null) ContentLooped(this, new EventArgs()); 
     }
 
     public event EventHandler ContentChanged;
@@ -121,14 +128,18 @@ namespace PeerCastStation.Core
       bool added = false;
       lock (list) {
         try {
-          if (item.Position > position)
-          {
+            if (item.Position < position) {
+                if (backPacket != null && backPacket.Position == item.Position) {
+                    OnContentLooped();
+                    return;
+                }
+                backPacket = item;
+            }
             item.Serial = serial;
             list.Add(new ContentKey(item.Stream, item.Timestamp, item.Position), item);
             serial += 1;
             added = true;
             position = item.Position;
-          }
         }
         catch (ArgumentException) {}
         while (
@@ -152,6 +163,8 @@ namespace PeerCastStation.Core
       lock (list) {
         list.Clear();
       }
+      position = -1;
+      backPacket = null;
       OnContentChanged();
     }
 

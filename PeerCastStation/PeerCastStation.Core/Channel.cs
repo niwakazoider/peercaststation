@@ -617,6 +617,9 @@ namespace PeerCastStation.Core
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
       };
+      contents.ContentLooped += (sender, e) => {
+        Reconnect();
+      };
     }
   }
 
