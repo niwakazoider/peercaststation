@@ -438,14 +438,15 @@ Stopped:
     protected bool ProcessAtom(Atom atom)
     {
       if (atom==null) return true;
-      else if (atom.Name==Atom.PCP_OK)         { OnPCPOk(atom);        return true; }
-      else if (atom.Name==Atom.PCP_CHAN)       { OnPCPChan(atom);      return true; }
-      else if (atom.Name==Atom.PCP_CHAN_PKT)   { OnPCPChanPkt(atom);   return true; }
-      else if (atom.Name==Atom.PCP_CHAN_INFO)  { OnPCPChanInfo(atom);  return true; }
-      else if (atom.Name==Atom.PCP_CHAN_TRACK) { OnPCPChanTrack(atom); return true; }
-      else if (atom.Name==Atom.PCP_BCST)       { OnPCPBcst(atom);      return true; }
-      else if (atom.Name==Atom.PCP_HOST)       { OnPCPHost(atom);      return true; }
-      else if (atom.Name==Atom.PCP_QUIT)       { OnPCPQuit(atom);      return false; }
+      else if (atom.Name==Atom.PCP_OK)                       { OnPCPOk(atom);                     return true; }
+      else if (atom.Name==Atom.PCP_CHAN)                     { OnPCPChan(atom);                   return true; }
+      else if (atom.Name==Atom.PCP_CHAN_PKT)                 { OnPCPChanPkt(atom);                return true; }
+      else if (atom.Name==Atom.PCP_CHAN_INFO)                { OnPCPChanInfo(atom);               return true; }
+      else if (atom.Name==Atom.PCP_CHAN_INFO_STREAMPOSITION) { OnPCPChanInfoStreamPosition(atom); return true; }
+      else if (atom.Name==Atom.PCP_CHAN_TRACK)               { OnPCPChanTrack(atom);              return true; }
+      else if (atom.Name==Atom.PCP_BCST)                     { OnPCPBcst(atom);                   return true; }
+      else if (atom.Name==Atom.PCP_HOST)                     { OnPCPHost(atom);                   return true; }
+      else if (atom.Name==Atom.PCP_QUIT)                     { OnPCPQuit(atom);                   return false; }
       return true;
     }
 
@@ -542,6 +543,19 @@ Stopped:
     protected void OnPCPChanTrack(Atom atom)
     {
       Channel.ChannelTrack = new ChannelTrack(atom.Children);
+    }
+
+    protected void OnPCPChanInfoStreamPosition(Atom atom)
+    {
+      long position;
+      var positionValue = atom.Children.GetChanInfoStreamPosition();
+      if (long.TryParse(positionValue, out position)) {
+        Channel.AddStreamPositionTimeMap(position, DateTime.Now);
+        Logger.Debug("OnPCPChanInfoStreamPosition: recv {0} , have {1}", position, Channel.Contents.Newest.Position);
+      }
+      if (Channel.Contents.Newest != null) {
+        Channel.PostStreamPosition(Channel.Contents.Newest.Position);
+      }
     }
 
     protected void OnPCPBcst(Atom atom)

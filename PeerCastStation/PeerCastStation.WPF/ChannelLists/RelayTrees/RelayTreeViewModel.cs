@@ -129,6 +129,10 @@ namespace PeerCastStation.WPF.ChannelLists.RelayTrees
             //ignore
           }
         }
+        string delay = Node.Host.Extra.GetChanInfoStreamDelay();
+        if (delay!=null && delay!="") {
+          version += " delay " + delay + "s";
+        }
         return version;
       }
     }

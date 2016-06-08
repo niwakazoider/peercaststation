@@ -57,6 +57,10 @@ namespace PeerCastStation.Core
     private ContentCollection contents = new ContentCollection();
     private System.Diagnostics.Stopwatch uptimeTimer = new System.Diagnostics.Stopwatch();
     private int streamID = 0;
+    private int delayTime = -1;
+    private Timer listStreamPositionTimer = null;
+    private SortedList<long, DateTime> listStreamPosition = new SortedList<long, DateTime>();
+    private SortedDictionary<long, DateTime> streamPositionTimeMap = new SortedDictionary<long, DateTime>();
     protected ReaderWriterLockSlim readWriteLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
     protected void ReadLock(Action action)
     {
@@ -245,6 +249,26 @@ namespace PeerCastStation.Core
           var events = ChannelTrackChanged;
           if (events!=null) events(this, new EventArgs());
         }
+      }
+    }
+
+    /// <summary>
+    /// ストリームの遅延情報を取得および設定します
+    /// </summary>
+    public int DelayTime {
+      get {
+        return ReadLock(() => delayTime);
+      }
+      set {
+        if (WriteLock(() => {
+          if (delayTime != value) {
+                delayTime = value;
+            return true;
+          }
+          else {
+            return false;
+          }
+        })) {}
       }
     }
 
@@ -488,6 +512,11 @@ namespace PeerCastStation.Core
           host.IsDirectFull   = !this.PeerCast.AccessController.IsChannelPlayable(this);
           host.IsRelayFull    = !this.PeerCast.AccessController.IsChannelRelayable(this);
           host.IsReceiving    = this.SourceStream!=null && (this.SourceStream.GetConnectionInfo().RecvRate ?? 0.0f)>0;
+          if(!IsBroadcasting && DelayTime>=0) {
+            var atoms = new AtomCollection();
+            atoms.SetChanInfoStreamDelay(DelayTime.ToString());
+            host.Extra.Update(atoms);
+          }
           return host.ToHost();
         });
       }
@@ -631,10 +660,112 @@ namespace PeerCastStation.Core
     {
       this.PeerCast    = peercast;
       this.ChannelID   = channel_id;
+      var listTimerDelegate = new TimerCallback(o=> {ListStreamPosition();});
+      this.listStreamPositionTimer = new Timer(listTimerDelegate, null, 0, 1000);
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
       };
+      contents.ContentChanged += (sender, e) => {
+        UpdateDelay();
+      };
+      Closed += (sender, e) => {
+        listStreamPositionTimer.Dispose();
+      };
     }
-  }
 
+    public void ListStreamPosition()
+    {
+      if (IsBroadcasting && Contents.Newest != null) {
+        lock (listStreamPosition) {
+          listStreamPosition.Add(Contents.Newest.Position, DateTime.Now);
+          if (listStreamPosition.Count>100) {
+            listStreamPosition.RemoveAt(0);
+          }
+        }
+      }
+    }
+
+    public void AddStreamPositionTimeMap(long position, DateTime datetime)
+    {
+      if (streamPositionTimeMap.Count == 0) {
+        streamPositionTimeMap.Add(position, datetime);
+      }
+    }
+
+    private void UpdateDelay()
+    {
+      if (contents.Newest == null) return;
+      if (streamPositionTimeMap.Count == 0) return;
+      if (streamPositionTimeMap.First().Key<=contents.Newest.Position) {
+        delayTime = (DateTime.Now - streamPositionTimeMap.First().Value).Seconds;
+        streamPositionTimeMap.Clear();
+        PostStreamDelay(delayTime.ToString());
+
+        var node = Nodes.FirstOrDefault(x => x.SessionID.Equals(SelfNode.SessionID));
+        if (node != null) {
+          var atoms = new AtomCollection();
+          atoms.SetChanInfoStreamDelay(delayTime.ToString());
+          HostBuilder host = new HostBuilder(node);
+          host.Extra.Update(atoms);
+          AddNode(host.ToHost());
+        }
+      }
+    }
+
+    public int getDelayFromStreamPosition(long position)
+    {
+      lock (listStreamPosition) {
+        var positionDateTime = listStreamPosition.LastOrDefault(x => x.Key < position);
+        if(positionDateTime.Equals(default(SortedList<long, DateTime>))) return -1;
+        return (DateTime.Now-positionDateTime.Value).Seconds;
+      }
+    }
+
+    public void PostStreamPosition(long position)
+    {
+      if (!IsBroadcasting) {
+        Broadcast(null, CreateStreamPositionPacket(position), BroadcastGroup.Trackers);
+        logger.Debug("Send BCST MSG: stream position {0}", position);
+      }
+    }
+
+    public void PostStreamDelay(string delay)
+    {
+      if (!IsBroadcasting) {
+        Broadcast(null, CreateStreamDelayPacket(delay), BroadcastGroup.Trackers);
+        logger.Debug("Send BCST MSG: stream delay {0}", delay);
+      }
+    }
+
+    private Atom CreateStreamPositionPacket(long position)
+    {
+      var atoms = new AtomCollection();
+      atoms.SetChanInfoStreamPosition(position.ToString());
+      atoms.SetHostSessionID(SelfNode.SessionID);
+      var bcst = new AtomCollection();
+      bcst.SetBcstFrom(PeerCast.SessionID);
+      bcst.SetBcstGroup(BroadcastGroup.Trackers);
+      bcst.SetBcstHops(0);
+      bcst.SetBcstTTL(12);
+      bcst.SetBcstChannelID(ChannelID);
+      bcst.Add(new Atom(Atom.PCP_CHAN_INFO_STREAMPOSITION, atoms));
+      return new Atom(Atom.PCP_BCST, bcst);
+    }
+
+    private Atom CreateStreamDelayPacket(string delay)
+    {
+      var atoms = new AtomCollection();
+      atoms.SetChanInfoStreamDelay(delay);
+      atoms.SetHostSessionID(SelfNode.SessionID);
+      var bcst = new AtomCollection();
+      bcst.SetBcstFrom(PeerCast.SessionID);
+      bcst.SetBcstGroup(BroadcastGroup.Trackers);
+      bcst.SetBcstHops(0);
+      bcst.SetBcstTTL(12);
+      bcst.SetBcstChannelID(ChannelID);
+      bcst.Add(new Atom(Atom.PCP_CHAN_INFO_STREAMDELAY, atoms));
+      return new Atom(Atom.PCP_BCST, bcst);
+    }
+
+  }
 }

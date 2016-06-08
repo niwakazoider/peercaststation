@@ -608,16 +608,18 @@ namespace PeerCastStation.PCP
 
     private async Task ProcessAtom(Atom atom, CancellationToken cancel_token)
     {
-           if (atom.Name==Atom.PCP_HELO)       await OnPCPHelo(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_OLEH)       await OnPCPOleh(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_OK)         await OnPCPOk(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_CHAN)       await OnPCPChan(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_CHAN_PKT)   await OnPCPChanPkt(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_CHAN_INFO)  await OnPCPChanInfo(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_CHAN_TRACK) await OnPCPChanTrack(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_BCST)       await OnPCPBcst(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_HOST)       await OnPCPHost(atom, cancel_token);
-      else if (atom.Name==Atom.PCP_QUIT)       await OnPCPQuit(atom, cancel_token);
+           if (atom.Name==Atom.PCP_HELO)                     await OnPCPHelo(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_OLEH)                     await OnPCPOleh(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_OK)                       await OnPCPOk(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_CHAN)                     await OnPCPChan(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_CHAN_PKT)                 await OnPCPChanPkt(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_CHAN_INFO)                await OnPCPChanInfo(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_CHAN_TRACK)               await OnPCPChanTrack(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_CHAN_INFO_STREAMPOSITION) await OnPCPChanInfoStreamPosition(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_CHAN_INFO_STREAMDELAY)    await OnPCPChanInfoStreamDelay(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_BCST)                     await OnPCPBcst(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_HOST)                     await OnPCPHost(atom, cancel_token);
+      else if (atom.Name==Atom.PCP_QUIT)                     await OnPCPQuit(atom, cancel_token);
     }
 
     private async Task<bool> PingHost(IPEndPoint target, Guid remote_session_id, CancellationToken cancel_token)
@@ -784,6 +786,50 @@ namespace PeerCastStation.PCP
 
     private Task OnPCPChanTrack(Atom atom, CancellationToken cancel_token)
     {
+      return Task.Delay(0);
+    }
+
+    private Task OnPCPChanInfoStreamPosition(Atom atom, CancellationToken cancel_token)
+    {
+      //Two-way broadcaster assessment delay
+      if(Channel.IsBroadcasting) {
+        var position = atom.Children.GetChanInfoStreamPosition();
+        var session_id = atom.Children.GetHostSessionID();
+        if(position != null && session_id != null) {
+          long myposition;
+          var node = Channel.Nodes.FirstOrDefault(x => x.SessionID.Equals(session_id));
+          if (node != null && long.TryParse(position, out myposition)) {
+            var delay = Channel.getDelayFromStreamPosition(myposition);
+            var atoms = new AtomCollection();
+            atoms.SetChanInfoStreamDelay(delay.ToString());
+            HostBuilder host = new HostBuilder(node);
+            host.Extra.Update(atoms);
+            Channel.AddNode(host.ToHost());
+            Logger.Info("Update StreamDelay: host {0}:{1}, delay {2}", host.Extra.GetHostIP(), host.Extra.GetHostPort(), delay);
+          }
+        }
+      }
+      return Task.Delay(0);
+    }
+
+    private Task OnPCPChanInfoStreamDelay(Atom atom, CancellationToken cancel_token)
+    {
+      //One-way, self assessment delay
+      if(!Channel.IsBroadcasting) {
+        var delay = atom.Children.GetChanInfoStreamDelay();
+        var session_id = atom.Children.GetHostSessionID();
+        if(delay != null && session_id != null) {
+          var node = Channel.Nodes.FirstOrDefault(x => x.SessionID.Equals(session_id));
+          if (node != null) {
+            var atoms = new AtomCollection();
+            atoms.SetChanInfoStreamDelay(delay);
+            HostBuilder host = new HostBuilder(node);
+            host.Extra.Update(atoms);
+            Channel.AddNode(host.ToHost());
+            Logger.Info("Update StreamDelay: host {0}:{1}, delay {2}", host.Extra.GetHostIP(), host.Extra.GetHostPort(), delay);
+          }
+        }
+      }
       return Task.Delay(0);
     }
 
