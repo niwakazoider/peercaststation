@@ -20,6 +20,8 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 
 namespace PeerCastStation.Core
 {
@@ -265,6 +267,7 @@ namespace PeerCastStation.Core
     #region PeerCastStation拡張
     public static readonly ID4 PCP_CHAN_INFO_STREAMTYPE = new ID4("styp");
     public static readonly ID4 PCP_CHAN_INFO_STREAMEXT  = new ID4("sext");
+    public static readonly ID4 PCP_DIGITAL_SIGN         = new ID4("disi");
     #endregion
 
     private byte[] value = null;
@@ -703,6 +706,19 @@ namespace PeerCastStation.Core
     {
       Name = name;
       this.children = new ReadOnlyAtomCollection(new AtomCollection(children));
+    }
+
+    /// <summary>
+    /// Atomをシリアライズします。
+    /// </summary>
+    /// <returns>シリアライズされたデータ</returns>
+    public byte[] Serialize()
+    {
+      IFormatter formatter = new BinaryFormatter();
+      MemoryStream stream = new MemoryStream();
+      formatter.Serialize(stream, this);
+      stream.Close();
+      return stream.ToArray();
     }
   }
 

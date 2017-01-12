@@ -602,6 +602,11 @@ namespace PeerCastStation.Core
       return GetIntFrom(collection, Atom.PCP_QUIT);
     }
 
+    public static byte[] GetDigitalSign(this IAtomCollection collection)
+    {
+      return GetBytesFrom(collection, Atom.PCP_DIGITAL_SIGN);
+    }
+
     public static void SetHelo(this IAtomCollection collection, IList<Atom> value)
     {
       SetAtomTo(collection, new Atom(Atom.PCP_HELO, value));
@@ -945,6 +950,11 @@ namespace PeerCastStation.Core
     public static void SetQuit(this IAtomCollection collection, int value)
     {
       SetAtomTo(collection, new Atom(Atom.PCP_QUIT, value));
+    }
+
+    public static void SetDigitalSign(this IAtomCollection collection, byte[] value)
+    {
+      SetAtomTo(collection, new Atom(Atom.PCP_DIGITAL_SIGN, value));
     }
 
   }

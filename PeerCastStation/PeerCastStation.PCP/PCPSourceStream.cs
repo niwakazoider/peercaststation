@@ -62,6 +62,7 @@ namespace PeerCastStation.PCP
     public int?   PCPVersion  { get; set; }
     public string ContentType { get; set; }
     public long?  StreamPos   { get; set; }
+    public string PublicKey   { get; set; }
     public string Server      { get; set; }
     public RelayRequestResponse(IEnumerable<string> responses)
     {
@@ -81,6 +82,9 @@ namespace PeerCastStation.PCP
         }
         if ((match = Regex.Match(res, @"x-peercast-pos:\s*(\d+)\s*$")).Success) {
           this.StreamPos = Convert.ToInt64(match.Groups[1].Value);
+        }
+        if ((match = Regex.Match(res, @"x-peercast-pubkey:\s*(\S+)\s*$")).Success) {
+          this.PublicKey = match.Groups[1].Value;
         }
         if ((match = Regex.Match(res, @"Server:\s*(.*)\s*$")).Success) {
           this.Server = match.Groups[1].Value;
@@ -195,6 +199,7 @@ namespace PeerCastStation.PCP
     {
       this.Status = ConnectionStatus.Connecting;
       await ProcessRelayRequest(cancel_token);
+      UpdateChannelPublicKey();
       if (IsStopped) goto Stopped;
       await ProcessHandshake(cancel_token);
       if (IsStopped) goto Stopped;
@@ -498,8 +503,10 @@ Stopped:
 
     protected void OnPCPChan(Atom atom)
     {
-      foreach (var c in atom.Children) {
-        ProcessAtom(c);
+      if(Verify(atom)) {
+        foreach (var c in atom.Children) {
+          ProcessAtom(c);
+        }
       }
     }
 
@@ -654,6 +661,31 @@ Stopped:
         null,
         null,
         server_name);
+    }
+
+    private Atom RemoveSign(Atom atom) {
+      var collection = new AtomCollection(atom.Children);
+      var atomds = collection.FindByName(Atom.PCP_DIGITAL_SIGN);
+      collection.Remove(atomds);
+      return new Atom(atom.Name, collection);
+    }
+
+    private bool Verify(Atom atom)
+    {
+      if(atom.Children==null) return true;
+      var signature = atom.Children.GetDigitalSign();
+      var data = RemoveSign(atom).Serialize();
+      return Channel.crypto.Verify(data, signature);
+    }
+
+    private void UpdateChannelPublicKey()
+    {
+      if(relayResponse.PublicKey!=null && relayResponse.PublicKey!="") {
+        if(remoteType.HasFlag(RemoteHostStatus.Tracker)) {
+          Channel.crypto.publicKey = relayResponse.PublicKey;
+          Logger.Debug("pubkey:{0}",Channel.crypto.publicKey);
+        }
+      }
     }
   }
 

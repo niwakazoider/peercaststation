@@ -103,6 +103,7 @@ namespace PeerCastStation.Core
     }
     public Guid ChannelID   { get; private set; }
     public Uri  SourceUri   { get; private set; }
+    public RSACrypto crypto { get; private set; }
     public abstract bool IsBroadcasting { get; }
 
     /// <summary>
@@ -631,6 +632,7 @@ namespace PeerCastStation.Core
     {
       this.PeerCast    = peercast;
       this.ChannelID   = channel_id;
+      this.crypto = new RSACrypto();
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
       };

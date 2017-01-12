@@ -300,26 +300,52 @@ namespace PeerCastStation.PCP
       }
       else {
         var status = IsRelayFull ? "503 Temporary Unavailable." : "200 OK";
-        return String.Format(
-          "HTTP/1.0 {0}\r\n" +
-          "Server: {1}\r\n" +
-          "Accept-Ranges: none\r\n" +
-          "x-audiocast-name: {2}\r\n" +
-          "x-audiocast-bitrate: {3}\r\n" +
-          "x-audiocast-genre: {4}\r\n" +
-          "x-audiocast-description: {5}\r\n" +
-          "x-audiocast-url: {6}\r\n" +
-          "x-peercast-channelid: {7}\r\n" +
-          "Content-Type:application/x-peercast-pcp\r\n" +
-          "\r\n",
-          status,
-          PeerCast.AgentName,
-          Channel.ChannelInfo.Name,
-          Channel.ChannelInfo.Bitrate,
-          Channel.ChannelInfo.Genre ?? "",
-          Channel.ChannelInfo.Desc ?? "",
-          Channel.ChannelInfo.URL ?? "",
-          Channel.ChannelID.ToString("N").ToUpper());
+        var bc = Channel as BroadcastChannel;
+        if(bc!=null) {
+          return String.Format(
+            "HTTP/1.0 {0}\r\n" +
+            "Server: {1}\r\n" +
+            "Accept-Ranges: none\r\n" +
+            "x-audiocast-name: {2}\r\n" +
+            "x-audiocast-bitrate: {3}\r\n" +
+            "x-audiocast-genre: {4}\r\n" +
+            "x-audiocast-description: {5}\r\n" +
+            "x-audiocast-url: {6}\r\n" +
+            "x-peercast-channelid: {7}\r\n" +
+            "x-peercast-pubkey: {8}\r\n" + 
+            "Content-Type:application/x-peercast-pcp\r\n" +
+            "\r\n",
+            status,
+            PeerCast.AgentName,
+            Channel.ChannelInfo.Name,
+            Channel.ChannelInfo.Bitrate,
+            Channel.ChannelInfo.Genre ?? "",
+            Channel.ChannelInfo.Desc ?? "",
+            Channel.ChannelInfo.URL ?? "",
+            Channel.ChannelID.ToString("N").ToUpper(),
+            bc.crypto.publicKey);
+        }else{
+          return String.Format(
+            "HTTP/1.0 {0}\r\n" +
+            "Server: {1}\r\n" +
+            "Accept-Ranges: none\r\n" +
+            "x-audiocast-name: {2}\r\n" +
+            "x-audiocast-bitrate: {3}\r\n" +
+            "x-audiocast-genre: {4}\r\n" +
+            "x-audiocast-description: {5}\r\n" +
+            "x-audiocast-url: {6}\r\n" +
+            "x-peercast-channelid: {7}\r\n" +
+            "Content-Type:application/x-peercast-pcp\r\n" +
+            "\r\n",
+            status,
+            PeerCast.AgentName,
+            Channel.ChannelInfo.Name,
+            Channel.ChannelInfo.Bitrate,
+            Channel.ChannelInfo.Genre ?? "",
+            Channel.ChannelInfo.Desc ?? "",
+            Channel.ChannelInfo.URL ?? "",
+            Channel.ChannelID.ToString("N").ToUpper());
+        }
       }
     }
 
@@ -347,7 +373,7 @@ namespace PeerCastStation.PCP
       chan.SetChanInfo(channel.ChannelInfo.Extra);
       chan.SetChanTrack(channel.ChannelTrack.Extra);
       Logger.Debug("Sending Header: {0}", content.Position);
-      return Enumerable.Repeat(new Atom(Atom.PCP_CHAN, chan), 1);
+      return Enumerable.Repeat(SignedAtom(Atom.PCP_CHAN, chan), 1);
     }
 
     private Atom CreateContentBodyPacket(Channel channel, long pos, IEnumerable<byte> data)
@@ -359,7 +385,7 @@ namespace PeerCastStation.PCP
       chan_pkt.SetChanPktPos((uint)(pos & 0xFFFFFFFFU));
       chan_pkt.SetChanPktData(data.ToArray());
       chan.SetChanPkt(chan_pkt);
-      return new Atom(Atom.PCP_CHAN, chan);
+      return SignedAtom(Atom.PCP_CHAN, chan);
     }
 
     public static readonly int MaxBodyLength = 15*1024;
@@ -471,7 +497,7 @@ namespace PeerCastStation.PCP
       chan.SetChanID(Channel.ChannelID);
       chan.SetChanInfo(Channel.ChannelInfo.Extra);
       chan.SetChanTrack(Channel.ChannelTrack.Extra);
-      return new Atom(Atom.PCP_CHAN, chan);
+      return SignedAtom(Atom.PCP_CHAN, chan);
     }
 
     private async Task ReadAndProcessAtom(CancellationToken cancel_token)
@@ -860,6 +886,19 @@ namespace PeerCastStation.PCP
       Logger.Debug("Quit Received: {0}", atom.GetInt32());
       Stop(StopReason.None);
       return Task.Delay(0);
+    }
+
+    private Atom SignedAtom(ID4 name, AtomCollection collection)
+    {
+      var atom = new Atom(name, collection);
+      if((Channel as BroadcastChannel)==null || collection==null){
+        return atom;
+      } else {
+        var serializeData = atom.Serialize();
+        var signature = Channel.crypto.Sign(serializeData);
+        collection.SetDigitalSign(signature);
+        return new Atom(name, collection);
+      }
     }
 
   }
