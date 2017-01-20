@@ -221,6 +221,10 @@
       <Project>{387996f5-e31d-4d92-bd86-8983c599f748}</Project>
       <Name>PeerCastStation.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\PeerCastStation.PCP\PeerCastStation.PCP.csproj">
+      <Project>{f9d126c6-76b7-45e2-b62e-6ac35ee285cd}</Project>
+      <Name>PeerCastStation.PCP</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PeerCastStation.UI\PeerCastStation.UI.csproj">
       <Project>{5988fbaf-37c4-4997-8389-55f2ebbb9511}</Project>
       <Name>PeerCastStation.UI</Name>

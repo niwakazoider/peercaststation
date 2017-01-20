@@ -227,6 +227,11 @@ namespace PeerCastStation.Core
       return GetStringFrom(collection, Atom.PCP_HELO_AGENT);
     }
 
+    public static byte[] GetDigitalSign(this IAtomCollection collection)
+    {
+      return GetBytesFrom(collection, Atom.PCP_DIGITAL_SIGN);
+    }
+
     public static Guid? GetHeloSessionID(this IAtomCollection collection)
     {
       return GetIDFrom(collection, Atom.PCP_HELO_SESSIONID);
@@ -600,11 +605,6 @@ namespace PeerCastStation.Core
     public static int? GetQuit(this IAtomCollection collection)
     {
       return GetIntFrom(collection, Atom.PCP_QUIT);
-    }
-
-    public static byte[] GetDigitalSign(this IAtomCollection collection)
-    {
-      return GetBytesFrom(collection, Atom.PCP_DIGITAL_SIGN);
     }
 
     public static void SetHelo(this IAtomCollection collection, IList<Atom> value)
