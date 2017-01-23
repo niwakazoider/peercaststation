@@ -361,6 +361,19 @@ namespace PeerCastStation.PCP
       changedEvent.Release();
     }
 
+    private Atom SignedAtom(ID4 name, AtomCollection collection)
+    {
+      var atom = new Atom(name, collection);
+      if((Channel as BroadcastChannel)==null || collection==null){
+        return atom;
+      } else {
+        var serializeData = atom.Serialize();
+        var signature = Channel.crypto.Sign(serializeData);
+        collection.SetDigitalSign(signature);
+        return new Atom(name, collection);
+      }
+    }
+
     protected IEnumerable<Atom> CreateContentHeaderPacket(Channel channel, Content content)
     {
       var chan = new AtomCollection();
@@ -478,6 +491,12 @@ namespace PeerCastStation.PCP
       Channel.Broadcast(null, CreateBroadcastPacket(BroadcastGroup.Relays, CreateChanPacket()), BroadcastGroup.Relays);
     }
 
+    public void Channel_HostDisconnectRequest(IPAddress host, int port)
+    {
+      Logger.Debug("Broadcasting host disconnect request");
+      Channel.Broadcast(null, CreateBroadcastPacket(BroadcastGroup.Relays, CreateHostDisconnectRequestPacket(host, port)), BroadcastGroup.Relays);
+    }
+    
     private Atom CreateBroadcastPacket(BroadcastGroup group, Atom packet)
     {
       var bcst = new AtomCollection();
@@ -498,6 +517,15 @@ namespace PeerCastStation.PCP
       chan.SetChanInfo(Channel.ChannelInfo.Extra);
       chan.SetChanTrack(Channel.ChannelTrack.Extra);
       return SignedAtom(Atom.PCP_CHAN, chan);
+    }
+
+    private Atom CreateHostDisconnectRequestPacket(IPAddress host, int port)
+    {
+      var dis = new AtomCollection();
+      dis.SetChanID(Channel.ChannelID);
+      dis.SetHostIP(host);
+      dis.SetHostPort(port);
+      return SignedAtom(Atom.PCP_DISCONNECT_REQUEST, dis);
     }
 
     private async Task ReadAndProcessAtom(CancellationToken cancel_token)
@@ -886,19 +914,6 @@ namespace PeerCastStation.PCP
       Logger.Debug("Quit Received: {0}", atom.GetInt32());
       Stop(StopReason.None);
       return Task.Delay(0);
-    }
-
-    private Atom SignedAtom(ID4 name, AtomCollection collection)
-    {
-      var atom = new Atom(name, collection);
-      if((Channel as BroadcastChannel)==null || collection==null){
-        return atom;
-      } else {
-        var serializeData = atom.Serialize();
-        var signature = Channel.crypto.Sign(serializeData);
-        collection.SetDigitalSign(signature);
-        return new Atom(name, collection);
-      }
     }
 
   }

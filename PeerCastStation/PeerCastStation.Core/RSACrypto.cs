@@ -25,6 +25,10 @@ namespace PeerCastStation.Core
     {
       privateKey = csp.ExportCspBlob(true);
     }
+    public bool HasBroadcastPublicKey()
+    {
+      return csp.PublicOnly;
+    }
     public byte[] Sign(byte[] data)
     {
       var hash = SHA256.Create().ComputeHash(data);

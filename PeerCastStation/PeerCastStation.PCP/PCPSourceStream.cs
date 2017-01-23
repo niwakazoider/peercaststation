@@ -462,7 +462,28 @@ Stopped:
       else if (atom.Name==Atom.PCP_BCST)       { OnPCPBcst(atom);      return true; }
       else if (atom.Name==Atom.PCP_HOST)       { OnPCPHost(atom);      return true; }
       else if (atom.Name==Atom.PCP_QUIT)       { OnPCPQuit(atom);      return false; }
+      else if (atom.Name==Atom.PCP_DISCONNECT_REQUEST)
+                                               { OnPCPDisconnectRequest(atom); return true; }
       return true;
+    }
+
+    private void OnPCPDisconnectRequest(Atom atom)
+    {
+      Logger.Debug("OnPCPDisconnectRequest {0}:{1}", atom.Children.GetHostIP(), atom.Children.GetHostPort());
+      if(Verify(atom)) {
+        var chid = atom.Children.GetChanID();
+        var host = atom.Children.GetHostIP().ToString();
+        var port = atom.Children.GetHostPort();
+        foreach (var os in Channel.OutputStreams.ToArray()) {
+          var output_stream = os as PCPOutputStream;
+          var remoteHost = output_stream.Downhost.GlobalEndPoint.Address.ToString();
+          var remotePort = output_stream.Downhost.GlobalEndPoint.Port;
+          if(Channel.ChannelID == chid && remoteHost==host && remotePort==port) {
+            Channel.RemoveOutputStream(output_stream);
+            output_stream.Stop();
+          }
+        }
+      }
     }
 
     protected void OnPCPOleh(Atom atom)
@@ -663,7 +684,7 @@ Stopped:
         server_name);
     }
 
-    private Atom RemoveSign(Atom atom) {
+    private Atom RemoveSignFromAtom(Atom atom) {
       var collection = new AtomCollection(atom.Children);
       var atomds = collection.FindByName(Atom.PCP_DIGITAL_SIGN);
       collection.Remove(atomds);
@@ -672,9 +693,10 @@ Stopped:
 
     private bool Verify(Atom atom)
     {
-      if(atom.Children==null) return true;
+      if(!Channel.crypto.HasBroadcastPublicKey()) return true;
+      if(atom.Children==null) return false;
       var signature = atom.Children.GetDigitalSign();
-      var data = RemoveSign(atom).Serialize();
+      var data = RemoveSignFromAtom(atom).Serialize();
       return Channel.crypto.Verify(data, signature);
     }
 

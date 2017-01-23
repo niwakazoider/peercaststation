@@ -20,9 +20,6 @@ using System.Linq;
 using System.Text;
 using PeerCastStation.Core;
 using PeerCastStation.WPF.Commons;
-using PeerCastStation.PCP;
-using System.ComponentModel;
-using System.Net;
 
 namespace PeerCastStation.WPF.ChannelLists.RelayTrees
 {
@@ -32,14 +29,9 @@ namespace PeerCastStation.WPF.ChannelLists.RelayTrees
     public IEnumerable<RelayTreeNodeViewModel> RelayTree { get; private set; }
 
     private ChannelViewModel channel;
-    private Channel ch;
     private Command refresh;
     public System.Windows.Input.ICommand Refresh {
       get { return refresh;}
-    }
-    public Command close;
-    public System.Windows.Input.ICommand Close {
-      get { return close;}
     }
 
     public RelayTreeViewModel(PeerCast peerCast)
@@ -49,41 +41,6 @@ namespace PeerCastStation.WPF.ChannelLists.RelayTrees
       refresh = new Command(
         () => Update(this.channel),
         () => channel!=null);
-      close = new Command(
-        () => {
-          this.ch = peerCast.Channels.FirstOrDefault(x => x.ChannelID.Equals(channel.ChannelID));
-          if(ch!=null && ch.IsBroadcasting) {
-            DisconnectSelectedNode(RelayTree, 0);
-          }
-        },
-        () => RelayTree.Count()>0);
-    }
-
-    private void DisconnectSelectedNode(IEnumerable<RelayTreeNodeViewModel> tree, int depth)
-    {
-      foreach(var node in tree.ToArray()) {
-        if(node.IsSelected) {
-          var host = node.RemoteAddres;
-          var port = node.RemotePort;
-          foreach(var os in ch.OutputStreams.ToArray()) {
-            var output_stream = os as PCPOutputStream;
-            if(output_stream!=null) {
-              if(depth==1) {
-                var thost = output_stream.Downhost.GlobalEndPoint.Address;
-                var tport = output_stream.Downhost.GlobalEndPoint.Port;
-                if(host.ToString()==thost.ToString() && port==tport) {
-                  ch.RemoveOutputStream(output_stream);
-                  output_stream.Stop();
-                }
-              }
-              if(depth>1) {
-                output_stream.Channel_HostDisconnectRequest(host, port);
-              }
-            }
-          }
-        }
-        DisconnectSelectedNode(node.Children, depth+1);
-      }
     }
 
     internal void Update(ChannelViewModel channel)
@@ -101,38 +58,14 @@ namespace PeerCastStation.WPF.ChannelLists.RelayTrees
       if (this.channel!=channel) {
         this.channel = channel;
         this.refresh.OnCanExecuteChanged();
-        var ch = peerCast.Channels.FirstOrDefault(x => x.ChannelID.Equals(channel.ChannelID));
-        if(ch!=null && ch.IsBroadcasting) {
-          this.close.OnCanExecuteChanged();
-        }
       }
     }
   }
 
-  public class RelayTreeNodeViewModel : INotifyPropertyChanged
+  public class RelayTreeNodeViewModel
   {
     public HostTreeNode Node { get; private set; }
     public IEnumerable<RelayTreeNodeViewModel> Children { get; private set; }
-
-    public event PropertyChangedEventHandler PropertyChanged;
-    private void NotifyPropertyChanged(string propertyName) {
-        if (PropertyChanged != null) {
-            PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
-    
-    private bool isSelected = false;
-    public bool IsSelected {
-        get {
-            return this.isSelected;
-        }
-        set {
-            if (this.isSelected != value) {
-                this.isSelected = value;
-                NotifyPropertyChanged("IsSelected");
-            }
-        }
-    }
 
     public ConnectionStatus ConnectionStatus {
       get {
@@ -152,28 +85,6 @@ namespace PeerCastStation.WPF.ChannelLists.RelayTrees
         }
         else {
           return ConnectionStatus.NotRelayable;
-        }
-      }
-    }
-
-    public IPAddress RemoteAddres {
-      get {
-        if (Node.Host.GlobalEndPoint!=null && Node.Host.GlobalEndPoint.Port!=0) {
-          return Node.Host.GlobalEndPoint.Address;
-        }
-        else {
-          return Node.Host.LocalEndPoint.Address;
-        }
-      }
-    }
-    
-    public int RemotePort {
-      get {
-        if (Node.Host.GlobalEndPoint!=null && Node.Host.GlobalEndPoint.Port!=0) {
-          return Node.Host.GlobalEndPoint.Port;
-        }
-        else {
-          return Node.Host.LocalEndPoint.Port;
         }
       }
     }
