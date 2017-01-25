@@ -17,14 +17,14 @@ namespace PeerCastStation.TS
       this.Channel = channel;
     }
 
-    public string Name { get { return "MPEG-TS (TS)"; } }
+    public string Name { get { return "MPEG-2 TS (TS)"; } }
     public Channel Channel { get; private set; }
-    private float? recvRate = 0;
+    private double recvRate = 0;
     private int patID = 0;
     private int pmtID = -1;
     private MemoryStream head = new MemoryStream();
     private MemoryStream cache = new MemoryStream();
-    
+
     public async Task ReadAsync(IContentSink sink, Stream stream, CancellationToken cancel_token)
     {
       int streamIndex = -1;
@@ -42,40 +42,43 @@ namespace PeerCastStation.TS
       {
         while (!cancel_token.IsCancellationRequested)
         {
-          bytes188 = ReadBytes(stream, 188);
-          TSPacket packet = new TSPacket(bytes188);
-          if (packet.sync_byte != 0x47) throw new Exception();
-          if (packet.payload_unit_start_indicator > 0)
-          {
-            if (packet.PID == patID)
+          var bytes = await ReadBytesAsync(stream, cancel_token);
+          for (int i = 0; i < bytes.Length/188; i++) {
+            bytes188 = new byte[188];
+            Array.Copy(bytes, 188 * i, bytes188, 0, 188);
+            TSPacket packet = new TSPacket(bytes188);
+            if (packet.sync_byte != 0x47) throw new Exception();
+            if (packet.payload_unit_start_indicator > 0)
             {
-              pmtID = packet.PMTID;
-              head = new MemoryStream();
-              if(!addHead(bytes188)) throw new Exception();
-              continue;
-            }
-            if (packet.PID == pmtID)
-            {
-              if(!addHead(bytes188)) throw new Exception();
-              head.Close();
-              byte[] newHead = head.ToArray();
-              if(!Enumerable.SequenceEqual(newHead, latestHead))
+              if (packet.PID == patID)
               {
-                sink.OnContentHeader(new Content(streamIndex, DateTime.Now - streamOrigin, Channel.ContentPosition, newHead));
-                latestHead = newHead;                  
+                pmtID = packet.PMTID;
+                head = new MemoryStream();
+                if(!addHead(bytes188)) throw new Exception();
+                continue;
               }
-              continue;
-            }
-            if ((DateTime.Now - latestContentTime).Milliseconds > 50) {
-              TryParseContent(packet, out contentData);
-              if(contentData!=null) {
-                sink.OnContent(new Content(streamIndex, DateTime.Now - streamOrigin, Channel.ContentPosition, contentData));
-                latestContentTime = DateTime.Now;
-                UpdateRecvRate(sink);
+              if (packet.PID == pmtID)
+              {
+                if(!addHead(bytes188)) throw new Exception();
+                head.Close();
+                byte[] newHead = head.ToArray();
+                if(!Enumerable.SequenceEqual(newHead, latestHead))
+                {
+                  sink.OnContentHeader(new Content(streamIndex, DateTime.Now - streamOrigin, Channel.ContentPosition, newHead));
+                  latestHead = newHead;
+                }
+                continue;
+              }
+              if ((DateTime.Now - latestContentTime).Milliseconds > 50) {
+                TryParseContent(packet, out contentData);
+                if(contentData!=null) {
+                  sink.OnContent(new Content(streamIndex, DateTime.Now - streamOrigin, Channel.ContentPosition, contentData));
+                  UpdateRecvRate(sink);
+                }
               }
             }
+            if (!addCache(bytes188)) throw new Exception();
           }
-          if (!addCache(bytes188)) throw new Exception();
         }
       }
       catch (EndOfStreamException)
@@ -133,10 +136,10 @@ namespace PeerCastStation.TS
       return false;
     }
     
-    private byte[] ReadBytes(Stream stream, int len)
+    private async Task<byte[]> ReadBytesAsync(Stream stream, CancellationToken cancel_token)
     {
-      var bytes = stream.ReadBytes(len);
-      if (bytes.Length < len) throw new EndOfStreamException();
+      var bytes = await stream.ReadBytesAsync(188*20, cancel_token);
+      if (bytes.Length < 188*20) throw new EndOfStreamException();
       return bytes;
     }
 

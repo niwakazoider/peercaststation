@@ -283,6 +283,7 @@ namespace PeerCastStation.HTTP
         request.Method,
         request.Uri);
       this.request = request;
+      this.hls = channel.Hls;
     }
 
     class WaitableQueue<T>
@@ -310,6 +311,7 @@ namespace PeerCastStation.HTTP
     private WaitableQueue<Packet> contentPacketQueue = new WaitableQueue<Packet>();
     private Content headerContent = null;
     private Content lastPacket = null;
+    private HTTPLivestreamSegment hls = null;
     private void OnContentChanged(object sender, EventArgs args)
     {
       if (headerContent!=Channel.ContentHeader) {
@@ -384,8 +386,11 @@ namespace PeerCastStation.HTTP
         Channel.ChannelInfo.ContentType=="WMV" ||
         Channel.ChannelInfo.ContentType=="WMA" ||
         Channel.ChannelInfo.ContentType=="ASX";
-      if (mms) return new ASXPlayList();
-      else     return new M3UPlayList();
+      bool ts =
+        Channel.ChannelInfo.ContentType=="TS";
+      if (mms)    return new ASXPlayList();
+      else if(ts) return new HLSPlayList();
+      else        return new M3UPlayList();
     }
 
     private IPlayList CreatePlaylist()
@@ -396,8 +401,9 @@ namespace PeerCastStation.HTTP
       }
       else {
         switch (fmt.ToLowerInvariant()) {
-        case "asx": return new ASXPlayList();
-        case "m3u": return new M3UPlayList();
+        case "asx" : return new ASXPlayList();
+        case "m3u" : return new M3UPlayList();
+        case "m3u8": return new HLSPlayList();
         default:    return CreateDefaultPlaylist();
         }
       }
@@ -423,6 +429,9 @@ namespace PeerCastStation.HTTP
             Channel.ChannelInfo.ContentType=="WMV" ||
             Channel.ChannelInfo.ContentType=="WMA" ||
             Channel.ChannelInfo.ContentType=="ASX";
+          bool ts =
+            Channel.ChannelInfo.ContentType=="TS";
+          var seq = hls.GetSequenceFromUrl(request.Uri.ToString());
           if (mms) {
             return
               "HTTP/1.0 200 OK\r\n"                         +
@@ -431,6 +440,16 @@ namespace PeerCastStation.HTTP
               "Pragma: no-cache\r\n"                        +
               "Pragma: features=\"broadcast,playlist\"\r\n" +
               "Content-Type: application/x-mms-framed\r\n";
+          }
+          else if(ts && seq>=0) {
+            var len = hls.GetSegmentData(seq).Length;
+            return
+              "HTTP/1.0 200 OK\r\n"                         +
+              $"Server: {PeerCast.AgentName}\r\n"           +
+              "Cache-Control: no-cache\r\n"                 +
+              "Pragma: no-cache\r\n"                        +
+              $"Content-Length:  {len}\r\n"                 +
+              $"Content-Type: {Channel.ChannelInfo.MIMEType}\r\n";
           }
           else {
             return
@@ -542,6 +561,15 @@ namespace PeerCastStation.HTTP
       Content sent_packet = null;
       try {
         while (!IsStopped) {
+          if (Channel.ChannelInfo.ContentType=="TS"){
+            var seq = hls.GetSequenceFromUrl(request.Uri.ToString());
+            if (seq>=0) {
+              await Connection.WriteAsync(hls.GetSegmentData(seq), cancel_token);
+            }else{
+              await Connection.WriteAsync(Channel.ContentHeader.Data, cancel_token);
+            }
+            break;
+          }
           var packet = await GetPacket(cancel_token);
           switch (packet.Type) {
           case Packet.ContentType.Header:
@@ -575,11 +603,16 @@ namespace PeerCastStation.HTTP
         Channel.ChannelInfo.ContentType=="WMV" ||
         Channel.ChannelInfo.ContentType=="WMA" ||
         Channel.ChannelInfo.ContentType=="ASX";
+      bool ts = 
+        Channel.ChannelInfo.ContentType=="TS";
       IPlayList pls;
       if (mms) {
         pls = new ASXPlayList();
-      }
-      else {
+      } else if (ts){
+        pls = new HLSPlayList();
+        var info = hls.GetSegmentInfoList();
+         ((HLSPlayList)pls).AddSegments(info);
+      } else {
         pls = new M3UPlayList();
       }
       pls.Channels.Add(Channel);

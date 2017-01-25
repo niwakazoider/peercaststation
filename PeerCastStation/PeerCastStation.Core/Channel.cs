@@ -57,7 +57,20 @@ namespace PeerCastStation.Core
     private ContentCollection contents = new ContentCollection();
     private System.Diagnostics.Stopwatch uptimeTimer = new System.Diagnostics.Stopwatch();
     private int streamID = 0;
+    private HTTPLivestreamSegment hls = null;
+    public HTTPLivestreamSegment Hls { get { return hls;} }
+    private ICollection<IContentChangeDelegate> onContentListener = new Collection<IContentChangeDelegate>();
+    private ICollection<IContentChangeDelegate> OnContentListener { get { return onContentListener; } }
     protected ReaderWriterLockSlim readWriteLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+    public interface IContentChangeDelegate
+    {
+      void OnContentChanged();
+    }
+    public void AddOnContentListener(IContentChangeDelegate listener)
+    {
+      onContentListener.Add(listener);
+    }
+    
     protected void ReadLock(Action action)
     {
       readWriteLock.EnterReadLock();
@@ -631,8 +644,12 @@ namespace PeerCastStation.Core
     {
       this.PeerCast    = peercast;
       this.ChannelID   = channel_id;
+      this.hls         = new HTTPLivestreamSegment(this);
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
+        for (int i = 0; i < onContentListener.Count; i++) {
+          onContentListener.ElementAt(i).OnContentChanged();
+        }
       };
     }
   }
