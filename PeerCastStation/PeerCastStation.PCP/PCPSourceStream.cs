@@ -63,12 +63,14 @@ namespace PeerCastStation.PCP
     public string ContentType { get; set; }
     public long?  StreamPos   { get; set; }
     public string PublicKey   { get; set; }
+    public ulong? TimeStamp  { get; set; }
     public string Server      { get; set; }
     public RelayRequestResponse(IEnumerable<string> responses)
     {
       this.PCPVersion = null;
       this.ContentType = null;
       this.StreamPos = null;
+      this.TimeStamp = null;
       foreach (var res in responses) {
         Match match = null;
         if ((match = Regex.Match(res, @"^HTTP/1.\d (\d+) .*$")).Success) {
@@ -86,6 +88,9 @@ namespace PeerCastStation.PCP
         if ((match = Regex.Match(res, @"x-peercast-pubkey:\s*(\S+)\s*$")).Success) {
           this.PublicKey = match.Groups[1].Value;
         }
+        if ((match = Regex.Match(res, @"x-peercast-timestamp:\s*(\d+)\s*$")).Success) {
+          this.TimeStamp = Convert.ToUInt64(match.Groups[1].Value);
+        }
         if ((match = Regex.Match(res, @"Server:\s*(.*)\s*$")).Success) {
           this.Server = match.Groups[1].Value;
         }
@@ -101,14 +106,17 @@ namespace PeerCastStation.PCP
     private Host uphost;
     private RemoteHostStatus remoteType = RemoteHostStatus.None;
     private EndPoint remoteHost = null;
+    private PCPSourceStream sourceStream = null;
 
     public PCPSourceConnection(
-        PeerCast peercast,
-        Channel  channel,
-        Uri      source_uri,
+        PeerCast        peercast,
+        Channel         channel,
+        PCPSourceStream source_stream,
+        Uri             source_uri,
         RemoteHostStatus remote_type)
       : base(peercast, channel, source_uri)
     {
+      sourceStream = source_stream;
       remoteType = remote_type;
     }
 
@@ -195,11 +203,34 @@ namespace PeerCastStation.PCP
       }
     }
 
+    private Atom RemoveSignFromAtom(Atom atom) {
+      var collection = new AtomCollection(atom.Children);
+      var atomds = collection.FindByName(Atom.PCP_DIGITAL_SIGN);
+      collection.Remove(atomds);
+      return new Atom(atom.Name, collection);
+    }
+
+    private bool Verify(Atom atom)
+    {
+      if(!Channel.Crypto.HasBroadcastPublicKey()) return true;
+      if(atom.Children==null) return false;
+      var signature = atom.Children.GetDigitalSign();
+      var data = RemoveSignFromAtom(atom).Serialize();
+      return Channel.Crypto.Verify(data, signature);
+    }
+
+    private void UpdateChannelPublicKey()
+    {
+      if(relayResponse.PublicKey!=null && relayResponse.PublicKey!="") {
+        Channel.Crypto.publicKey = relayResponse.PublicKey;
+        Logger.Debug("pubkey:{0}",Channel.Crypto.publicKey);
+      }
+    }
+
     protected override async Task DoProcess(CancellationToken cancel_token)
     {
       this.Status = ConnectionStatus.Connecting;
       await ProcessRelayRequest(cancel_token);
-      UpdateChannelPublicKey();
       if (IsStopped) goto Stopped;
       await ProcessHandshake(cancel_token);
       if (IsStopped) goto Stopped;
@@ -248,9 +279,15 @@ Stopped:
         $"x-peercast-pos:{Channel.ContentPosition}\r\n" +
         $"\r\n"
       );
-      try {
+      try {      
+        var relayRequestTimeStamp = Channel.getCurrentTimeMillis();
         await connection.Stream.WriteAsync(req, cancel_token);
         relayResponse = await ReadRequestResponseAsync(connection.Stream, cancel_token);
+        if(remoteType.HasFlag(RemoteHostStatus.Tracker)) {
+          UpdateChannelPublicKey();
+          var timestampDiff = (relayResponse.TimeStamp==null) ? 0 : (long)(relayResponse.TimeStamp - relayRequestTimeStamp);
+          sourceStream.OnTimeStampDiff(timestampDiff);
+        }
         Logger.Debug("Relay response: {0}", relayResponse.StatusCode);
         if (relayResponse.StatusCode==200 || relayResponse.StatusCode==503) {
           return;
@@ -463,7 +500,7 @@ Stopped:
       else if (atom.Name==Atom.PCP_HOST)       { OnPCPHost(atom);      return true; }
       else if (atom.Name==Atom.PCP_QUIT)       { OnPCPQuit(atom);      return false; }
       else if (atom.Name==Atom.PCP_DISCONNECT_REQUEST)
-                                               { OnPCPDisconnectRequest(atom); return true; }
+                                       { OnPCPDisconnectRequest(atom); return true; }
       return true;
     }
 
@@ -552,11 +589,15 @@ Stopped:
 
     private int streamIndex = -1;
     private DateTime streamOrigin;
-    private long     lastPosition = 0;
+    private long lastPosition = 0;
     protected void OnPCPChanPkt(Atom atom)
     {
       var pkt_type = atom.Children.GetChanPktType();
       var pkt_data = atom.Children.GetChanPktData();
+      var pkt_time = atom.Children.GetChanPktTimeStamp();
+      if (pkt_time!=null) {
+        sourceStream.OnTimeStamp((ulong)pkt_time);
+      }
       if (pkt_type!=null && pkt_data!=null) {
         if (pkt_type==Atom.PCP_CHAN_PKT_TYPE_HEAD) {
           long pkt_pos = atom.Children.GetChanPktPos() ?? 0;
@@ -684,30 +725,10 @@ Stopped:
         server_name);
     }
 
-    private Atom RemoveSignFromAtom(Atom atom) {
-      var collection = new AtomCollection(atom.Children);
-      var atomds = collection.FindByName(Atom.PCP_DIGITAL_SIGN);
-      collection.Remove(atomds);
-      return new Atom(atom.Name, collection);
-    }
-
-    private bool Verify(Atom atom)
+    public event EventHandler ContentChanged;
+    private void OnContentChanged()
     {
-      if(!Channel.crypto.HasBroadcastPublicKey()) return true;
-      if(atom.Children==null) return false;
-      var signature = atom.Children.GetDigitalSign();
-      var data = RemoveSignFromAtom(atom).Serialize();
-      return Channel.crypto.Verify(data, signature);
-    }
-
-    private void UpdateChannelPublicKey()
-    {
-      if(relayResponse.PublicKey!=null && relayResponse.PublicKey!="") {
-        if(remoteType.HasFlag(RemoteHostStatus.Tracker)) {
-          Channel.crypto.publicKey = relayResponse.PublicKey;
-          Logger.Debug("pubkey:{0}",Channel.crypto.publicKey);
-        }
-      }
+      if (ContentChanged!=null) ContentChanged(this, new EventArgs());
     }
   }
 
@@ -753,6 +774,21 @@ Stopped:
       }
 
       public ICollection<Uri> Nodes { get { return ignoredNodes.Keys; } }
+    }
+    private long timestampDiff = 0;
+    private long delay = 0;
+    public void OnTimeStampDiff(long timestampDiff)
+    {
+      this.timestampDiff = timestampDiff;
+      Logger.Debug("timestamp diff:{0}", timestampDiff);
+    }
+    public void OnTimeStamp(ulong timestamp)
+    {
+      delay = (long)(Channel.getCurrentTimeMillis() - timestamp) + timestampDiff;
+    }
+    public long GetDelay()
+    {
+      return delay;
     }
     private static readonly TimeSpan ignoredTime = TimeSpan.FromMilliseconds(180000); //ms
     private IgnoredNodeCollection ignoredNodes = new IgnoredNodeCollection(ignoredTime);
@@ -896,13 +932,15 @@ Stopped:
     protected override ISourceConnection CreateConnection(Uri source_uri)
     {
       if (source_uri==this.SourceUri) {
-        return new PCPSourceConnection(PeerCast, Channel, source_uri, RemoteHostStatus.Tracker);
+        var connection = new PCPSourceConnection(PeerCast, Channel, this, source_uri, RemoteHostStatus.Tracker);
+        return connection;
       }
       else {
-        return new PCPSourceConnection(PeerCast, Channel, source_uri, RemoteHostStatus.None);
+        var connection = new PCPSourceConnection(PeerCast, Channel, this, source_uri, RemoteHostStatus.None);
+        return connection;
       }
     }
-
+    
     protected override void OnConnectionStopped(ISourceConnection connection, StopReason reason)
     {
       switch (reason) {

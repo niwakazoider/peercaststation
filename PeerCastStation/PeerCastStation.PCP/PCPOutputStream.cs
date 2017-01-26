@@ -300,8 +300,8 @@ namespace PeerCastStation.PCP
       }
       else {
         var status = IsRelayFull ? "503 Temporary Unavailable." : "200 OK";
-        var bc = Channel as BroadcastChannel;
-        if(bc!=null) {
+        var bcChannel = Channel as BroadcastChannel;
+        if(bcChannel!=null) {
           return String.Format(
             "HTTP/1.0 {0}\r\n" +
             "Server: {1}\r\n" +
@@ -312,7 +312,8 @@ namespace PeerCastStation.PCP
             "x-audiocast-description: {5}\r\n" +
             "x-audiocast-url: {6}\r\n" +
             "x-peercast-channelid: {7}\r\n" +
-            "x-peercast-pubkey: {8}\r\n" + 
+            "x-peercast-pubkey: {8}\r\n" +
+            "x-peercast-timestamp: {9}\r\n" +
             "Content-Type:application/x-peercast-pcp\r\n" +
             "\r\n",
             status,
@@ -323,7 +324,8 @@ namespace PeerCastStation.PCP
             Channel.ChannelInfo.Desc ?? "",
             Channel.ChannelInfo.URL ?? "",
             Channel.ChannelID.ToString("N").ToUpper(),
-            bc.crypto.publicKey);
+            bcChannel.Crypto.publicKey,
+            Channel.getCurrentTimeMillis());
         }else{
           return String.Format(
             "HTTP/1.0 {0}\r\n" +
@@ -368,7 +370,7 @@ namespace PeerCastStation.PCP
         return atom;
       } else {
         var serializeData = atom.Serialize();
-        var signature = Channel.crypto.Sign(serializeData);
+        var signature = Channel.Crypto.Sign(serializeData);
         collection.SetDigitalSign(signature);
         return new Atom(name, collection);
       }
@@ -397,6 +399,7 @@ namespace PeerCastStation.PCP
       chan_pkt.SetChanPktType(Atom.PCP_CHAN_PKT_DATA);
       chan_pkt.SetChanPktPos((uint)(pos & 0xFFFFFFFFU));
       chan_pkt.SetChanPktData(data.ToArray());
+      chan_pkt.SetChanPktTimeStamp(Channel.getCurrentTimeMillis());
       chan.SetChanPkt(chan_pkt);
       return SignedAtom(Atom.PCP_CHAN, chan);
     }

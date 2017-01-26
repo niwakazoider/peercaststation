@@ -21,6 +21,30 @@ namespace PeerCastStation.Core
 {
   public static class AtomCollectionExtensions
   {
+    public static ulong? GetULongFrom(IAtomCollection collection, ID4 name)
+    {
+      var atom = collection.FindByName(name);
+      ulong value = 0;
+      if (atom != null && atom.TryGetUInt64(out value)) {
+        return value;
+      }
+      else {
+        return null;
+      }
+    }
+
+    public static long? GetLongFrom(IAtomCollection collection, ID4 name)
+    {
+      var atom = collection.FindByName(name);
+      long value = 0;
+      if (atom != null && atom.TryGetInt64(out value)) {
+        return value;
+      }
+      else {
+        return null;
+      }
+    }
+
     public static int? GetIntFrom(IAtomCollection collection, ID4 name)
     {
       var atom = collection.FindByName(name);
@@ -315,6 +339,11 @@ namespace PeerCastStation.Core
     public static byte[] GetChanPktData(this IAtomCollection collection)
     {
       return GetBytesFrom(collection, Atom.PCP_CHAN_PKT_DATA);
+    }
+    
+    public static ulong? GetChanPktTimeStamp(this IAtomCollection collection)
+    {
+      return (ulong?)GetULongFrom(collection, Atom.PCP_CHAN_PKT_TIMESTAMP);
     }
 
     public static IAtomCollection GetChanInfo(this IAtomCollection collection)
@@ -800,6 +829,11 @@ namespace PeerCastStation.Core
     public static void SetChanPktType(this IAtomCollection collection, ID4 value)
     {
       SetAtomTo(collection, new Atom(Atom.PCP_CHAN_PKT_TYPE, value.GetBytes()));
+    }
+
+    public static void SetChanPktTimeStamp(this IAtomCollection collection, ulong value)
+    {
+      SetAtomTo(collection, new Atom(Atom.PCP_CHAN_PKT_TIMESTAMP, value));
     }
 
     public static void SetChanTrack(this IAtomCollection collection, IList<Atom> value)

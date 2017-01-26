@@ -269,6 +269,7 @@ namespace PeerCastStation.Core
     public static readonly ID4 PCP_CHAN_INFO_STREAMEXT  = new ID4("sext");
     public static readonly ID4 PCP_DIGITAL_SIGN         = new ID4("disi");
     public static readonly ID4 PCP_DISCONNECT_REQUEST   = new ID4("dire");
+    public static readonly ID4 PCP_CHAN_PKT_TIMESTAMP   = new ID4("time");
     #endregion
 
     private byte[] value = null;
@@ -490,6 +491,76 @@ namespace PeerCastStation.Core
     }
 
     /// <summary>
+    /// 保持している値をInt64として取得します。
+    /// </summary>
+    /// <returns>保持している値</returns>
+    /// <exception cref="FormatException">
+    /// 値の長さが合わない、または値を保持していません
+    /// </exception>
+    public long GetInt64()
+    {
+      long res;
+      if (TryGetInt64(out res)) {
+        return res;
+      }
+      else {
+        throw new FormatException();
+      }
+    }
+
+    /// <summary>
+    /// 保持している値をInt64として取得しようと試みます。
+    /// </summary>
+    /// <param name="res">保持している値の書き込み先</param>
+    /// <returns>値がInt64として解析できた場合はtrue、そうでない場合はfalse</returns>
+    public bool TryGetInt64(out long res)
+    {
+      if (value != null && value.Length == 8) {
+        res = BitConverter.ToInt64(value, 0);
+        return true;
+      }
+      else {
+        res = 0;
+        return false;
+      }
+    }
+
+    /// <summary>
+    /// 保持している値をUInt64として取得します。
+    /// </summary>
+    /// <returns>保持している値</returns>
+    /// <exception cref="FormatException">
+    /// 値の長さが合わない、または値を保持していません
+    /// </exception>
+    public ulong GetUInt64()
+    {
+      ulong res;
+      if (TryGetUInt64(out res)) {
+        return res;
+      }
+      else {
+        throw new FormatException();
+      }
+    }
+
+    /// <summary>
+    /// 保持している値をUInt64として取得しようと試みます。
+    /// </summary>
+    /// <param name="res">保持している値の書き込み先</param>
+    /// <returns>値がUInt64として解析できた場合はtrue、そうでない場合はfalse</returns>
+    public bool TryGetUInt64(out ulong res)
+    {
+      if (value != null && value.Length == 8) {
+        res = BitConverter.ToUInt64(value, 0);
+        return true;
+      }
+      else {
+        res = 0;
+        return false;
+      }
+    }
+
+    /// <summary>
     /// 保持している値を文字列として取得します。
     /// </summary>
     /// <returns>保持している値</returns>
@@ -653,6 +724,30 @@ namespace PeerCastStation.Core
     /// <param name="name">4文字以下の名前</param>
     /// <param name="value">UInt32値</param>
     public Atom(ID4 name, uint value)
+    {
+      Name = name;
+      this.value = BitConverter.GetBytes(value);
+      if (!BitConverter.IsLittleEndian) Array.Reverse(this.value);
+    }
+
+    /// <summary>
+    /// 名前と値を指定してAtomを初期化します。
+    /// </summary>
+    /// <param name="name">4文字以下の名前</param>
+    /// <param name="value">Int64値</param>
+    public Atom(ID4 name, long value)
+    {
+      Name = name;
+      this.value = BitConverter.GetBytes(value);
+      if (!BitConverter.IsLittleEndian) Array.Reverse(this.value);
+    }
+
+    /// <summary>
+    /// 名前と値を指定してAtomを初期化します。
+    /// </summary>
+    /// <param name="name">4文字以下の名前</param>
+    /// <param name="value">UInt64値</param>
+    public Atom(ID4 name, ulong value)
     {
       Name = name;
       this.value = BitConverter.GetBytes(value);

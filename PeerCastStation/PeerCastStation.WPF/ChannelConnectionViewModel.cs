@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media.Imaging;
 using PeerCastStation.Core;
+using PeerCastStation.PCP;
 
 namespace PeerCastStation.WPF
 {
@@ -105,7 +106,15 @@ namespace PeerCastStation.WPF
     }
 
     public override string Connections {
-      get { return ""; }
+      get {
+        var stream = sourceStream as PCPSourceStream;
+        if (stream!=null && stream.GetDelay()>0) {
+          return String.Format("{0}ms", stream.GetDelay());
+        }
+        else {
+          return "";
+        }
+      }
     }
 
     public override string AgentName {

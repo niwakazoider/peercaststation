@@ -103,7 +103,7 @@ namespace PeerCastStation.Core
     }
     public Guid ChannelID   { get; private set; }
     public Uri  SourceUri   { get; private set; }
-    public RSACrypto crypto { get; private set; }
+    public RSACrypto Crypto { get; private set; }
     public abstract bool IsBroadcasting { get; }
 
     /// <summary>
@@ -508,6 +508,7 @@ namespace PeerCastStation.Core
     }
 
     private CancellationTokenSource sourceStreamCancelSource;
+
     protected void Start(Uri source_uri, ISourceStream source_stream)
     {
       WriteLock(() => {
@@ -622,6 +623,15 @@ namespace PeerCastStation.Core
         outputStreams = new List<IOutputStream>();
       });
     }
+    
+    /// <summary>
+    /// ミリ秒のUnixTimestampを返します
+    /// </summary>
+    public static ulong getCurrentTimeMillis()
+    {
+      var now = DateTime.UtcNow;
+      return (ulong)(now - new DateTime(1970, 1, 1)).TotalSeconds*1000 + (ulong)now.Millisecond;
+    }
 
     /// <summary>
     /// チャンネルIDを指定してチャンネルを初期化します
@@ -632,11 +642,12 @@ namespace PeerCastStation.Core
     {
       this.PeerCast    = peercast;
       this.ChannelID   = channel_id;
-      this.crypto = new RSACrypto();
+      this.Crypto = new RSACrypto();
       contents.ContentChanged += (sender, e) => {
         OnContentChanged();
       };
     }
+
   }
 
 }
