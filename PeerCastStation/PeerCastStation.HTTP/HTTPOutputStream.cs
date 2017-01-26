@@ -561,13 +561,9 @@ namespace PeerCastStation.HTTP
       Content sent_packet = null;
       try {
         while (!IsStopped) {
-          if (Channel.ChannelInfo.ContentType=="TS"){
-            var seq = hls.GetSequenceFromUrl(request.Uri.ToString());
-            if (seq>=0) {
-              await Connection.WriteAsync(hls.GetSegmentData(seq), cancel_token);
-            }else{
-              await Connection.WriteAsync(Channel.ContentHeader.Data, cancel_token);
-            }
+          var seq = hls.GetSequenceFromUrl(request.Uri.ToString());
+          if (Channel.ChannelInfo.ContentType=="TS" && seq>=0){
+            await Connection.WriteAsync(hls.GetSegmentData(seq), cancel_token);
             break;
           }
           var packet = await GetPacket(cancel_token);
