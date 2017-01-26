@@ -25,7 +25,9 @@ namespace PeerCastStation.Core
 
     public byte[] GetSegmentData(int i)
     {
-      return Channel.ContentHeader.Data.Concat(segmenter.getSegmentData(i)).ToArray();
+      var header = (Channel.ContentHeader == null) ? new byte[0] : Channel.ContentHeader.Data;
+      var data = segmenter.getSegmentData(i);
+      return header.Concat(data).ToArray();
     }
 
     private Segmenter getSegmenter()
@@ -52,6 +54,7 @@ namespace PeerCastStation.Core
         IList<Content> contents;
 
         if (Channel.ContentHeader == null) return;
+        if (Channel.ChannelInfo.ContentType!="TS") return;
         if (lastPacket == null)
         {
           contents = Channel.Contents.GetNewerContents(Channel.ContentHeader.Stream, Channel.ContentHeader.Timestamp, Channel.ContentHeader.Position);
