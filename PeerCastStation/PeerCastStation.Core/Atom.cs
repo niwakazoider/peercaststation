@@ -269,7 +269,7 @@ namespace PeerCastStation.Core
     public static readonly ID4 PCP_CHAN_INFO_STREAMEXT  = new ID4("sext");
     public static readonly ID4 PCP_DIGITAL_SIGN         = new ID4("disi");
     public static readonly ID4 PCP_DISCONNECT_REQUEST   = new ID4("dire");
-    public static readonly ID4 PCP_CHAN_PKT_TIMESTAMP   = new ID4("time");
+    public static readonly ID4 PCP_TIMESTAMP            = new ID4("time");
     #endregion
 
     private byte[] value = null;

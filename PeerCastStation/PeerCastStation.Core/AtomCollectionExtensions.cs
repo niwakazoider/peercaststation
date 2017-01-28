@@ -341,9 +341,9 @@ namespace PeerCastStation.Core
       return GetBytesFrom(collection, Atom.PCP_CHAN_PKT_DATA);
     }
     
-    public static ulong? GetChanPktTimeStamp(this IAtomCollection collection)
+    public static ulong? GetTimeStamp(this IAtomCollection collection)
     {
-      return (ulong?)GetULongFrom(collection, Atom.PCP_CHAN_PKT_TIMESTAMP);
+      return (ulong?)GetULongFrom(collection, Atom.PCP_TIMESTAMP);
     }
 
     public static IAtomCollection GetChanInfo(this IAtomCollection collection)
@@ -831,9 +831,9 @@ namespace PeerCastStation.Core
       SetAtomTo(collection, new Atom(Atom.PCP_CHAN_PKT_TYPE, value.GetBytes()));
     }
 
-    public static void SetChanPktTimeStamp(this IAtomCollection collection, ulong value)
+    public static void SetTimeStamp(this IAtomCollection collection, ulong value)
     {
-      SetAtomTo(collection, new Atom(Atom.PCP_CHAN_PKT_TIMESTAMP, value));
+      SetAtomTo(collection, new Atom(Atom.PCP_TIMESTAMP, value));
     }
 
     public static void SetChanTrack(this IAtomCollection collection, IList<Atom> value)

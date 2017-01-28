@@ -499,9 +499,21 @@ Stopped:
       else if (atom.Name==Atom.PCP_BCST)       { OnPCPBcst(atom);      return true; }
       else if (atom.Name==Atom.PCP_HOST)       { OnPCPHost(atom);      return true; }
       else if (atom.Name==Atom.PCP_QUIT)       { OnPCPQuit(atom);      return false; }
+      else if (atom.Name==Atom.PCP_TIMESTAMP)  { OnPCPTimeStamp(atom); return true; }
       else if (atom.Name==Atom.PCP_DISCONNECT_REQUEST)
                                        { OnPCPDisconnectRequest(atom); return true; }
       return true;
+    }
+
+    private void OnPCPTimeStamp(Atom atom)
+    {
+      if(Verify(atom)){
+        ulong pkt_time = atom.Children.GetTimeStamp() ?? 0;
+        if (pkt_time>0) {
+          Logger.Debug("timestamp:{0}",pkt_time);
+          sourceStream.OnTimeStamp(pkt_time);
+        }
+      }
     }
 
     private void OnPCPDisconnectRequest(Atom atom)
@@ -561,10 +573,8 @@ Stopped:
 
     protected void OnPCPChan(Atom atom)
     {
-      if(Verify(atom)) {
-        foreach (var c in atom.Children) {
-          ProcessAtom(c);
-        }
+      foreach (var c in atom.Children) {
+        ProcessAtom(c);
       }
     }
 
@@ -594,10 +604,6 @@ Stopped:
     {
       var pkt_type = atom.Children.GetChanPktType();
       var pkt_data = atom.Children.GetChanPktData();
-      var pkt_time = atom.Children.GetChanPktTimeStamp();
-      if (pkt_time!=null) {
-        sourceStream.OnTimeStamp((ulong)pkt_time);
-      }
       if (pkt_type!=null && pkt_data!=null) {
         if (pkt_type==Atom.PCP_CHAN_PKT_TYPE_HEAD) {
           long pkt_pos = atom.Children.GetChanPktPos() ?? 0;
