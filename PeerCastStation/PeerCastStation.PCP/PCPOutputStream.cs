@@ -467,14 +467,14 @@ namespace PeerCastStation.PCP
             atoms = atoms.Concat(CreateContentBodyPacket(Channel, content));
           }
         }
-        foreach (var atom in atoms) {
-          await Connection.WriteAsync(atom, cancel_token);
-        }
         if(Channel.IsBroadcasting) {
           if(Channel.getCurrentTimeMillis() - TimeStampSendTime > 5000) {
-            Channel_TimeStampInterval();
+            Channel_TimeStampInterval(lastPosition);
             TimeStampSendTime = Channel.getCurrentTimeMillis();
           }
+        }
+        foreach (var atom in atoms) {
+          await Connection.WriteAsync(atom, cancel_token);
         }
         if (skipped) {
           Stop(StopReason.SendTimeoutError);
@@ -507,16 +507,17 @@ namespace PeerCastStation.PCP
       Channel.Broadcast(null, CreateBroadcastPacket(BroadcastGroup.Relays, CreateHostDisconnectRequestPacket(host, port)), BroadcastGroup.Relays);
     }
 
-    public void Channel_TimeStampInterval()
+    public void Channel_TimeStampInterval(long pos)
     {
       Logger.Debug("Broadcasting timestamp");
-      Channel.Broadcast(null, CreateBroadcastPacket(BroadcastGroup.Relays, CreateChanTimeStampPacket()), BroadcastGroup.Relays);
+      Channel.Broadcast(null, CreateBroadcastPacket(BroadcastGroup.Relays, CreateChanTimeStampPacket(pos)), BroadcastGroup.Relays);
     }
 
-    private Atom CreateChanTimeStampPacket()
+    private Atom CreateChanTimeStampPacket(long pos)
     {
       var time_pkt = new AtomCollection();
       time_pkt.SetTimeStamp(Channel.getCurrentTimeMillis());
+      time_pkt.SetChanPktPos((uint)(pos & 0xFFFFFFFFU));
       return SignedAtom(Atom.PCP_TIMESTAMP, time_pkt);
     }
     

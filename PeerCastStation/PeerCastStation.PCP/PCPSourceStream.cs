@@ -286,7 +286,7 @@ Stopped:
         if(remoteType.HasFlag(RemoteHostStatus.Tracker)) {
           UpdateChannelPublicKey();
           var timestampDiff = (relayResponse.TimeStamp==null) ? 0 : (long)(relayResponse.TimeStamp - relayRequestTimeStamp);
-          sourceStream.OnTimeStampDiff(timestampDiff);
+          sourceStream.OnClockDiff(timestampDiff);
         }
         Logger.Debug("Relay response: {0}", relayResponse.StatusCode);
         if (relayResponse.StatusCode==200 || relayResponse.StatusCode==503) {
@@ -509,9 +509,10 @@ Stopped:
     {
       if(Verify(atom)){
         ulong pkt_time = atom.Children.GetTimeStamp() ?? 0;
-        if (pkt_time>0) {
-          Logger.Debug("timestamp:{0}",pkt_time);
-          sourceStream.OnTimeStamp(pkt_time);
+        uint pkt_pos = atom.Children.GetChanPktPos() ?? 0;
+        if (pkt_time>0 && pkt_pos>0) {
+          Logger.Debug("timestamp:{0}, pos:{1}", pkt_time, pkt_pos);
+          sourceStream.OnTimeStampSignal(atom);
         }
       }
     }
@@ -623,6 +624,8 @@ Stopped:
         else if (pkt_type==Atom.PCP_CHAN_PKT_TYPE_META) {
         }
       }
+      
+      sourceStream.CheckDelayByPosition(lastPosition);
     }
 
     protected void OnPCPChanInfo(Atom atom)
@@ -781,16 +784,35 @@ Stopped:
 
       public ICollection<Uri> Nodes { get { return ignoredNodes.Keys; } }
     }
-    private long timestampDiff = 0;
+    private long clockDiff = 0;
     private long delay = 0;
-    public void OnTimeStampDiff(long timestampDiff)
+    private Atom timestampSignalAtom = null;
+    public void OnClockDiff(long timestampDiff)
     {
-      this.timestampDiff = timestampDiff;
-      Logger.Debug("timestamp diff:{0}", timestampDiff);
+      this.clockDiff = timestampDiff;
+      Logger.Debug("clock diff:{0}", timestampDiff);
     }
-    public void OnTimeStamp(ulong timestamp)
+    public void OnTimeStampSignal(Atom atom)
     {
-      delay = (long)(Channel.getCurrentTimeMillis() - timestamp) + timestampDiff;
+      if(timestampSignalAtom == null) {
+        timestampSignalAtom = atom;
+      }
+    }
+    public void CheckDelayByPosition(long lastPosition)
+    {
+      if(timestampSignalAtom == null) return;
+      var atom = timestampSignalAtom;
+      ulong signal_time = atom.Children.GetTimeStamp() ?? 0;
+      uint signal_pos = atom.Children.GetChanPktPos() ?? 0;
+      if (signal_time>0 && signal_pos>=0 && lastPosition>=signal_pos) {
+        var now = Channel.getCurrentTimeMillis();
+        SetDelay((long)(now - signal_time) + clockDiff);
+        timestampSignalAtom = null;
+      }
+    }
+    private void SetDelay(long delay)
+    {
+      this.delay = delay;
     }
     public long GetDelay()
     {
