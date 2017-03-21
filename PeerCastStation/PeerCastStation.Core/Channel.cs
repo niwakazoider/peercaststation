@@ -58,7 +58,10 @@ namespace PeerCastStation.Core
     private ContentCollection contents;
     private System.Diagnostics.Stopwatch uptimeTimer = new System.Diagnostics.Stopwatch();
     private int streamID = 0;
+    private HTTPLivestreamSegment hls = null;
+    public HTTPLivestreamSegment Hls { get { return hls;} }
     protected ReaderWriterLockSlim readWriteLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+    
     protected void ReadLock(Action action)
     {
       readWriteLock.EnterReadLock();
@@ -401,6 +404,10 @@ namespace PeerCastStation.Core
         this.owner = owner;
       }
 
+      public Channel GetChannel() {
+        return owner;
+      }
+
       public void OnChannelInfo(ChannelInfo channel_info)
       {
         owner.ChannelInfoChanged?.Invoke(owner, new ChannelInfoEventArgs(channel_info));
@@ -735,7 +742,9 @@ namespace PeerCastStation.Core
       this.ChannelID   = channel_id;
       this.contents    = new ContentCollection(this);
       this.contentSinks.Add(new ChannelEventInvoker(this));
+      this.hls         = new HTTPLivestreamSegment(this);
     }
+  
   }
 
 }

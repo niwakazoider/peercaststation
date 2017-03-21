@@ -144,4 +144,49 @@ namespace PeerCastStation.HTTP
       }
     }
   }
+
+  /// <summary>
+  /// HLSのプレイリストを作成するクラスです
+  /// </summary>
+  public class HLSPlayList
+    : IPlayList
+  {
+    public string MIMEType { get { return "application/x-mpegurl"; } }
+    public IList<Channel> Channels { get; private set; }
+    public IList<SegmentData> Segments { get; private set; }
+
+    public HLSPlayList()
+    {
+      Channels = new List<Channel>();
+      Segments = new List<SegmentData>();
+    }
+
+    public void AddSegments(IList<SegmentData> list)
+    {
+      Segments = list;
+    }
+
+    public byte[] CreatePlayList(Uri baseuri, IEnumerable<KeyValuePair<string,string>> parameters)
+    {
+      var res = new System.Text.StringBuilder();
+      res.AppendLine("#EXTM3U");
+      res.AppendLine("#EXT-X-VERSION:3");
+      res.AppendLine("#EXT-X-ALLOW-CACHE:NO");
+      res.AppendLine("#EXT-X-TARGETDURATION:3");
+      if (Segments.Count > 0){
+        res.AppendLine(String.Format("#EXT-X-MEDIA-SEQUENCE:{0}", Segments[0].sequence));
+        foreach (var c in Channels){
+          foreach (var s in Segments){
+            var url = new Uri(baseuri, c.ChannelID.ToString("N").ToUpper() + String.Format("_{0:00000}", s.sequence) + ".ts");
+            res.AppendLine("#EXTINF:"+s.duration+",");
+            //res.AppendLine("#EXTINF:8,");
+            res.AppendLine(url.AbsolutePath.ToString());
+          }
+          break;
+        }
+      }
+      return System.Text.Encoding.ASCII.GetBytes(res.ToString());
+    }
+
+  }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace PeerCastStation.TS
+namespace PeerCastStation.Core
 {
   public class TSPacket
   {
