@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -132,12 +133,15 @@ namespace PeerCastStation.Core
         {
           Array.Copy(c.Data, j, bytes, 0, 188);
           var packet = new TSPacket(bytes);
+          if (packet.PID==0) {
+            //Debug.WriteLine(BitConverter.ToString(bytes).Replace("-", string.Empty));
+          }
           if (packet.keyframe)
           {
             if (sequence >= 0)
             {
               addSegment(sequence, c.Timestamp - keyframetime, getCache());
-              logger.Debug("update segments:" + SegmentIndexToString(getSegmentInfoList()));
+              logger.Info("update segments:" + SegmentIndexToString(getSegmentInfoList()));
               //logger.Debug(BitConverter.ToString(bytes).Replace("-", string.Empty));
             }
             sequence++;
@@ -153,12 +157,10 @@ namespace PeerCastStation.Core
 
       public void OnContentHeader(Content content_header)
       {
-        var contentType = Channel.ChannelInfo.ContentType;
-        if(contentType!="TS" && contentType!="FLV") {
-          return;
+        if (content_header.Data.Length>=188 && content_header.Data[0]==0x47) {
+          headerContent = content_header;
+          OnContentData(content_header);
         }
-        headerContent = content_header;
-        OnContentData(content_header);
       }
     }
 
