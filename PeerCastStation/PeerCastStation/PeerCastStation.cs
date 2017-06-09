@@ -35,7 +35,9 @@ namespace PeerCastStation.Main
     }
 
     PeerCast peerCast = new PeerCast();
+    NatTraversal natTraversal = new NatTraversal();
     override public PeerCast PeerCast { get { return peerCast; } }
+    override public NatTraversal NatTraversal { get { return natTraversal; } }
     public void Run()
     {
       DoSetup();
@@ -81,6 +83,7 @@ namespace PeerCastStation.Main
       }
       SaveSettings();
       peerCast.Stop();
+      natTraversal.Stop();
       foreach (var plugin in Plugins) {
         plugin.Detach();
       }
