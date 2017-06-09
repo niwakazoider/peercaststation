@@ -71,6 +71,7 @@
     <Compile Include="IPAddressExtension.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="LogWriter.cs" />
+    <Compile Include="NatTraversal.cs" />
     <Compile Include="OutputListener.cs" />
     <Compile Include="OutputStreamBase.cs" />
     <Compile Include="PeerCast.cs" />

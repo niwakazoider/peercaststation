@@ -154,13 +154,23 @@ namespace PeerCastStation.PCP
     {
       try {
         var port = source.Port<0 ? PCPVersion.DefaultPort : source.Port;
-        client = new TcpClient();
-        if (source.HostNameType==UriHostNameType.IPv4 ||
-            source.HostNameType==UriHostNameType.IPv6) {
-          await client.ConnectAsync(IPAddress.Parse(source.Host), port);
+        try {
+            client = new TcpClient();
+            if (source.HostNameType==UriHostNameType.IPv4 ||
+                source.HostNameType==UriHostNameType.IPv6) {
+              if(!client.ConnectAsync(IPAddress.Parse(source.Host), port).Wait(3000)) {
+                throw new Exception("Timeout");
+              }
+            }
+            else {
+              await client.ConnectAsync(source.DnsSafeHost, port);
+            }
         }
-        else {
-          await client.ConnectAsync(source.DnsSafeHost, port);
+        catch (SocketException) {
+            client = PeerCastApplication.Current.NatTraversal.Match(source.Host);
+            if(client==null) {
+              throw new Exception("Nat Traversal Error");
+            }
         }
         var connection = new SourceConnectionClient(client);
         connection.Stream.ReadTimeout  = 30000;
@@ -169,9 +179,8 @@ namespace PeerCastStation.PCP
         Logger.Debug("Connected: {0}", source);
         return connection;
       }
-      catch (SocketException e) {
+      catch (Exception) {
         Logger.Debug("Connection Failed: {0}", source);
-        Logger.Debug(e);
         return null;
       }
     }

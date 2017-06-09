@@ -142,7 +142,7 @@ namespace PeerCastStation.Core
 
     public virtual void Stop(StopReason reason)
     {
-      if (reason==StopReason.None) throw new ArgumentException("Invalid value", "reason");
+      //if (reason==StopReason.None) throw new ArgumentException("Invalid value", "reason");
       if (IsStopped) return;
       StoppedReason = reason;
       isStopped.Cancel();

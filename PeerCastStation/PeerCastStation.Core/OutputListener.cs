@@ -182,7 +182,7 @@ namespace PeerCastStation.Core
       this.AuthenticationKey = AuthenticationKey.Generate();
     }
 
-    private AccessControlInfo GetAccessControlInfo(IPEndPoint remote_endpoint)
+    public AccessControlInfo GetAccessControlInfo(IPEndPoint remote_endpoint)
     {
       if (remote_endpoint==null) return this.GlobalAccessControlInfo;
       if (remote_endpoint.Address.Equals(IPAddress.Loopback) ||

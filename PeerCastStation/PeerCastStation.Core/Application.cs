@@ -13,6 +13,7 @@ namespace PeerCastStation.Core
     public abstract PecaSettings Settings { get; }
     public abstract IEnumerable<IPlugin> Plugins { get; }
     public abstract PeerCast PeerCast { get; }
+    public abstract NatTraversal NatTraversal { get; }
     public abstract void Stop();
     public abstract void SaveSettings();
     public PeerCastApplication()

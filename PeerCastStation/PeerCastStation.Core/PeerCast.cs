@@ -553,6 +553,14 @@ namespace PeerCastStation.Core
       }
     }
 
+    public OutputListener NatListener()
+    {
+      foreach (var listener in outputListeners) {
+        return listener;
+      }
+      return null;
+    }
+
     /// <summary>
     /// 待ち受けと全てのチャンネルを終了します
     /// </summary>
