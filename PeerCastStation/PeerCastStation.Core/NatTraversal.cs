@@ -35,18 +35,26 @@ namespace PeerCastStation.Core
 
     private void SimultaneousOpen(string host) {
       TcpClient client = null;
+      string remoteIP = null;
       try {
         var p = host.Split(':');
-        string remoteIP = p[0];
+        remoteIP = p[0];
         int remotePort = int.Parse(p[1]);
         IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, remotePort);
         client = new TcpClient(ipLocalEndPoint);
-        for(int retry=0;retry<1;retry++) {
+        //for(int retry=0;retry<1;retry++) {
           try{
             logger.Info("Nat Traversal connect to "+host);
             client.Connect(new IPEndPoint(IPAddress.Parse(remoteIP), remotePort));
             logger.Info("Nat Traversal connected!");
             
+            Task.Run( () => {
+              try {
+                Thread.Sleep(5000);
+                clients.Remove(remoteIP);
+              }catch(Exception) {}
+            } );
+
             if(!clients.ContainsKey(remoteIP)) {
               clients[remoteIP] = client;
               OnListener(client);
@@ -58,7 +66,7 @@ namespace PeerCastStation.Core
           }catch(SocketException s) {
             Debug.WriteLine(s.Message);
           }
-        }
+        //}
       }catch(Exception e) {
         Debug.WriteLine(e.Message);
       }
@@ -78,7 +86,7 @@ namespace PeerCastStation.Core
 
         try {
 
-          Thread.Sleep(3000);
+          Thread.Sleep(5000);
  
           if (_ws.State != WebSocketState.Open) {
               await _ws.ConnectAsync(new Uri(wsshost), CancellationToken.None);
@@ -104,8 +112,9 @@ namespace PeerCastStation.Core
           }
 
         } catch(Exception e) {
-          retryCount++;
           Debug.WriteLine(e);
+
+          retryCount++;
           logger.Info("Nat Traversal matching server error.");
 
           try {
@@ -133,48 +142,45 @@ namespace PeerCastStation.Core
 
     public TcpClient Match(string text)
     {
-      var buff = new ArraySegment<byte>(Encoding.UTF8.GetBytes(text));
-      if (_ws.State == WebSocketState.Open)
-      {
-          var remoteIP = text.Split(':')[0];
+      TcpClient client = null;
+      try {
+        var buff = new ArraySegment<byte>(Encoding.UTF8.GetBytes(text));
+        if (_ws.State == WebSocketState.Open) {
+            var remoteIP = text.Split(':')[0];
         
-          if(!clients.ContainsKey(remoteIP)) {
-            clients[remoteIP] = null;
-          }
-
-          _ws.SendAsync(buff, WebSocketMessageType.Text, true, CancellationToken.None);
-
-          for(var i=0;i<30;i++) {
-            Thread.Sleep(100);
-            if(clients.ContainsKey(remoteIP) && clients[remoteIP] != null) {
-              return clients[remoteIP];
+            if(!clients.ContainsKey(remoteIP)) {
+              clients[remoteIP] = null;
             }
-          }
+            
+            _ws.SendAsync(buff, WebSocketMessageType.Text, true, CancellationToken.None);
 
-          if(clients.ContainsKey(remoteIP)) {
-            clients.Remove(remoteIP);
-          }
-      }
-      return null;
+            for(var i=0;i<30;i++) {
+              Thread.Sleep(100);
+              if(clients.ContainsKey(remoteIP) && clients[remoteIP] != null) {
+                client = clients[remoteIP];
+                break;
+              }
+            }
+
+            if(clients.ContainsKey(remoteIP)) {
+              clients.Remove(remoteIP);
+            }
+        }
+      } catch(Exception) { }
+      return client;
     }
 
     public void Stop()
     {
-      if(wsthread != null) {
-        try {
-          wsthread.Abort();
-        } catch(Exception) { }
-      }
-      if(sdthread != null) {
-        try {
-          sdthread.Abort();
-        } catch(Exception) { }
-      }
-      if(_ws != null) {
-        try {
-          _ws.Dispose();
-        } catch(Exception) { }
-      }
+      try {
+        wsthread.Abort();
+      } catch(Exception) { }
+      try {
+        sdthread.Abort();
+      } catch(Exception) { }
+      try {
+        _ws.Dispose();
+      } catch(Exception) { }
     }
 
     private static Logger logger = new Logger(typeof(NatTraversal));
