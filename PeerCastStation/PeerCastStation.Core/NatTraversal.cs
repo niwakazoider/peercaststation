@@ -174,9 +174,11 @@ namespace PeerCastStation.Core
     {
       try {
         wsthread.Abort();
+      } catch(ThreadAbortException) {
       } catch(Exception) { }
       try {
         sdthread.Abort();
+      } catch(ThreadAbortException) {
       } catch(Exception) { }
       try {
         _ws.Dispose();
