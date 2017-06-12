@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Net.Sockets;
-using System.Net.WebSockets;
 using System.Diagnostics;
 using System.Net;
 using System.Collections.Generic;
+using WebSocketSharp;
 
 namespace PeerCastStation.Core
 {
@@ -15,9 +14,8 @@ namespace PeerCastStation.Core
   {
     private Thread wsthread;
     private Thread sdthread;
-    private int MessageBufferSize = 256;
     private int retryCount = 0;
-    private ClientWebSocket _ws = null;
+    private WebSocket _ws = null;
     private string wsshost = "ws://127.0.0.1:3000/";
     private Dictionary<string, TcpClient> clients = new Dictionary<string, TcpClient>();
 
@@ -78,56 +76,37 @@ namespace PeerCastStation.Core
       }
     }
 
-    private async void WsConnect()
+    private void WsConnect()
     {
-        if (_ws == null) {
-            _ws = new ClientWebSocket();
-        }
-
         try {
-
           Thread.Sleep(5000);
- 
-          if (_ws.State != WebSocketState.Open) {
-              await _ws.ConnectAsync(new Uri(wsshost), CancellationToken.None);
 
-              if(_ws.State == WebSocketState.Open) {
+          if (_ws == null) {
+              _ws = new WebSocket(wsshost);
+              _ws.OnOpen += (sender, e) => {
                 retryCount = 0;
                 logger.Info("Connected to Nat Traversal matching server.");
-              }
- 
-              while (_ws.State == WebSocketState.Open) {
-                var buff = new ArraySegment<byte>(new byte[MessageBufferSize]);
-                var ret = await _ws.ReceiveAsync(buff, CancellationToken.None);
-                var remote = (new UTF8Encoding()).GetString(buff.Take(ret.Count).ToArray());
-           
-                if(remote=="") continue;
-
-                await Task.Run(() =>
-                {
-                  SimultaneousOpen(remote);
-                });
-
-              }
+              };
+              _ws.OnError += (sender, e) => {
+                retryCount++;
+              };
+              _ws.OnClose += (sender, e) => {
+                retryCount++;
+                logger.Info("Nat Traversal matching server error.");
+                _ws = null;
+                
+                if(retryCount<10) {
+                  WsConnect();
+                }
+              };
+              _ws.OnMessage += (sender, e) => {
+                  SimultaneousOpen(e.Data);
+              };
           }
+          _ws.Connect();
 
         } catch(Exception e) {
           Debug.WriteLine(e);
-
-          retryCount++;
-          logger.Info("Nat Traversal matching server error.");
-
-          try {
-            _ws.Dispose();
-          } catch(Exception) { }
-
-          if(retryCount>10) {
-            return;
-          }
-
-          _ws = null;
-
-          WsConnect();
         }
 
     }
@@ -144,15 +123,14 @@ namespace PeerCastStation.Core
     {
       TcpClient client = null;
       try {
-        var buff = new ArraySegment<byte>(Encoding.UTF8.GetBytes(text));
-        if (_ws.State == WebSocketState.Open) {
+        if (_ws.ReadyState == WebSocketState.Open) {
             var remoteIP = text.Split(':')[0];
         
             if(!clients.ContainsKey(remoteIP)) {
               clients[remoteIP] = null;
             }
             
-            _ws.SendAsync(buff, WebSocketMessageType.Text, true, CancellationToken.None);
+            _ws.Send(Encoding.UTF8.GetBytes(text));
 
             for(var i=0;i<30;i++) {
               Thread.Sleep(100);
@@ -181,7 +159,7 @@ namespace PeerCastStation.Core
       } catch(ThreadAbortException) {
       } catch(Exception) { }
       try {
-        _ws.Dispose();
+        _ws.Close();
       } catch(Exception) { }
     }
 

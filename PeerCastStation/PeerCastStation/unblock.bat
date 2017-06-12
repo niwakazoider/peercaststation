@@ -1,6 +1,7 @@
 @cd %~dp0
 echo. > PeerCastStation.exe:Zone.Identifier
 echo. > Newtonsoft.Json.dll:Zone.Identifier
+echo. > websocket-sharp.dll:Zone.Identifier
 echo. > PeerCastStation.ASF.dll:Zone.Identifier
 echo. > PeerCastStation.Core.dll:Zone.Identifier
 echo. > PeerCastStation.FLV.dll:Zone.Identifier
