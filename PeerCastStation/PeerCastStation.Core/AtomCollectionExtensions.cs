@@ -473,6 +473,32 @@ namespace PeerCastStation.Core
       return GetIDFrom(collection, Atom.PCP_HOST_ID);
     }
 
+    public static IPEndPoint[] GetHostIPv4v6Map(this IAtomCollection collection)
+    {
+      var addresses = new List<IPAddress>();
+      var ports = new List<ushort>();
+      foreach (var atom in collection) {
+        if (atom.Name==Atom.PCP_HOST_IPV4 || atom.Name==Atom.PCP_HOST_IPV6) {
+          IPAddress value;
+          if (atom.TryGetIPAddress(out value)) {
+            addresses.Add(value);
+          }
+        }
+        else if (atom.Name==Atom.PCP_HOST_PORT) {
+          ushort value;
+          if (atom.TryGetUInt16(out value)) {
+            ports.Add(value);
+          }
+        }
+      }
+      var cnt = Math.Min(addresses.Count, ports.Count);
+      var res = new IPEndPoint[cnt];
+      for (var i = 0; i<cnt; i++) {
+        res[i] = new IPEndPoint(addresses[i], ports[i]);
+      }
+      return res;
+    }
+
     public static IPEndPoint[] GetHostEndPoints(this IAtomCollection collection)
     {
       var addresses = new List<IPAddress>();
@@ -865,6 +891,16 @@ namespace PeerCastStation.Core
     public static void AddHostIP(this IAtomCollection collection, IPAddress value)
     {
       collection.Add(new Atom(Atom.PCP_HOST_IP, value));
+    }
+    
+    public static void AddHostIPv4(this IAtomCollection collection, IPAddress value)
+    {
+      collection.Add(new Atom(Atom.PCP_HOST_IPV4, value));
+    }
+
+    public static void AddHostIPv6(this IAtomCollection collection, IPAddress value)
+    {
+      collection.Add(new Atom(Atom.PCP_HOST_IPV6, value));
     }
 
     public static void SetHostNewPos(this IAtomCollection collection, uint value)

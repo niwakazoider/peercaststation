@@ -243,6 +243,9 @@ namespace PeerCastStation.Core
     public static readonly ID4 PCP_HOST                   = new ID4("host");
     public static readonly ID4 PCP_HOST_ID                = new ID4("id");
     public static readonly ID4 PCP_HOST_IP                = new ID4("ip");
+    public static readonly ID4 PCP_HOST_IPV4              = new ID4("ipv4");
+    public static readonly ID4 PCP_HOST_IPV6              = new ID4("ipv6");
+    public static readonly ID4 PCP_HOST_IPV4V6_MAP        = new ID4("ip46");
     public static readonly ID4 PCP_HOST_PORT              = new ID4("port");
     public static readonly ID4 PCP_HOST_CHANID            = new ID4("cid");
     public static readonly ID4 PCP_HOST_NUML              = new ID4("numl");
@@ -1044,6 +1047,7 @@ namespace PeerCastStation.Core
     {
       return new ReadOnlyAtomCollection(this);
     }
+
   }
 
   /// <summary>

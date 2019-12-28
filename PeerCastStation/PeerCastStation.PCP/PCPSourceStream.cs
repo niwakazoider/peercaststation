@@ -133,28 +133,54 @@ namespace PeerCastStation.PCP
       base.OnStopped();
     }
 
+    private IPEndPoint[] GetChallengeEndpoints(IPEndPoint endpoint)
+    {
+      var endpoints = new List<IPEndPoint>();
+      endpoints.Add(endpoint);
+      if (endpoint.AddressFamily!=AddressFamily.InterNetworkV6) {
+        //v4endpoint => v6endpoint
+        var host = Channel.Nodes.Where((node) => node.GlobalEndPoint.Address.Equals(endpoint)).FirstOrDefault();
+        if (host != null) {
+          var map = host.Extra.GetHostIPv4v6Map();
+          if (map != null) {
+            for (var i = 1; i<map.Length; i++) {
+              var v6endpoint = map.ElementAt(i);
+              endpoints.Add(v6endpoint);
+            }
+          }
+        }
+      }
+      return endpoints.ToArray();
+    }
+
     private void Channel_HostInfoUpdated(object sender, EventArgs e)
     {
       BroadcastHostInfo();
     }
 
-    protected async Task<SourceConnectionClient> DoConnect(IPEndPoint endpoint)
+    protected async Task<SourceConnectionClient> DoConnect(IPEndPoint original_endpoint)
     {
-      try {
-        client = new TcpClient(endpoint.AddressFamily);
-        var connection = new SourceConnectionClient(client);
-        await client.ConnectAsync(endpoint.Address, endpoint.Port).ConfigureAwait(false);
-        connection.Stream.ReadTimeout  = 30000;
-        connection.Stream.WriteTimeout = 8000;
-        remoteHost = endpoint;
-        Logger.Debug("Connected: {0}", endpoint);
-        return connection;
+      var endpoints = GetChallengeEndpoints(original_endpoint);
+
+      //endpoints = [ipv4, ipv6[0], ipv6[1], ...]
+      foreach (IPEndPoint endpoint in endpoints) {
+        try {
+          client = new TcpClient(endpoint.AddressFamily);
+          var connection = new SourceConnectionClient(client);
+          await client.ConnectAsync(endpoint.Address, endpoint.Port).ConfigureAwait(false);
+          connection.Stream.ReadTimeout  = 30000;
+          connection.Stream.WriteTimeout = 8000;
+          remoteHost = endpoint;
+          Logger.Debug("Connected: {0}", endpoint);
+          return connection;
+        }
+        catch (SocketException e) {
+          Logger.Debug("Connection Failed: {0}", endpoint);
+          Logger.Debug(e);
+        }
       }
-      catch (SocketException e) {
-        Logger.Debug("Connection Failed: {0}", endpoint);
-        Logger.Debug(e);
-        return null;
-      }
+
+      return null;
     }
 
     protected override async Task<SourceConnectionClient> DoConnect(Uri source, CancellationToken cancel_token)
@@ -292,6 +318,23 @@ Stopped:
         Logger.Info(e);
         Stop(StopReason.ConnectionError);
       }
+    }
+
+    private Atom CreatePCPHostIPv4v6Map()
+    {
+      var map = new AtomCollection();
+      var globalendpoint =
+        PeerCast.GetGlobalEndPoint(AddressFamily.InterNetwork, OutputStreamType.Relay);
+      var globalendpointv6 =
+        PeerCast.GetGlobalEndPoint(AddressFamily.InterNetworkV6, OutputStreamType.Relay);
+      //APIHost.getExternalIPAddresses?
+      if (globalendpoint!=null && globalendpointv6!=null) {
+        map.AddHostIPv4(globalendpoint.Address);
+        map.AddHostPort(globalendpoint.Port);
+        map.AddHostIPv6(globalendpointv6.Address);
+        map.AddHostPort(globalendpointv6.Port);
+      }
+      return new Atom(Atom.PCP_HOST_IPV4V6_MAP, map);
     }
 
     private Atom CreatePCPHelo()
@@ -443,6 +486,7 @@ Stopped:
         (RecvRate>0 ? PCPHostFlags1.Receiving : 0));
       host.SetHostUphostIP(connection.RemoteEndPoint.Address);
       host.SetHostUphostPort(connection.RemoteEndPoint.Port);
+      host.Add(CreatePCPHostIPv4v6Map());
       return new Atom(Atom.PCP_HOST, host);
     }
 
