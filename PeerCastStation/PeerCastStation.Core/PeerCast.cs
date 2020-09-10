@@ -20,8 +20,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
-using Owin;
 using System.Collections.Immutable;
+using PeerCastStation.Core.Http;
 
 namespace PeerCastStation.Core
 {
