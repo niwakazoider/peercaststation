@@ -137,11 +137,19 @@ namespace PeerCastStation.UI
           PeerCastApplication.Current.Stop(3);
           break;
         case InstallerType.Installer:
-          System.Diagnostics.Process.Start(downloaded.FilePath);
+          System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo(downloaded.FilePath) {
+              UseShellExecute = true,
+            }
+          );
           PeerCastApplication.Current.Stop();
           break;
         case InstallerType.ServiceInstaller:
-          System.Diagnostics.Process.Start(downloaded.FilePath, "/quiet");
+          System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo(downloaded.FilePath, "/quiet") {
+              UseShellExecute = true,
+            }
+          );
           break;
         case InstallerType.Unknown:
           throw new ApplicationException();
