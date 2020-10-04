@@ -88,8 +88,9 @@ namespace PeerCastStation.Main
 
     static int InvokeApp(string method, params string[] args)
     {
+      var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
       var proc = System.Diagnostics.Process.Start(
-        Assembly.GetEntryAssembly().Location,
+        mod,
         String.Join(" ", Enumerable.Repeat(method, 1).Concat(args).Select(ShellEscape))
       );
       proc.WaitForExit();
