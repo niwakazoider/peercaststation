@@ -40,6 +40,7 @@
     <ProjectReference Include="..\PeerCastStation.FLV\PeerCastStation.FLV.csproj" />
     <ProjectReference Include="..\PeerCastStation.HTTP\PeerCastStation.HTTP.csproj" />
     <ProjectReference Include="..\PeerCastStation.MKV\PeerCastStation.MKV.csproj" />
+    <ProjectReference Include="..\PeerCastStation.MP4\PeerCastStation.MP4.csproj" />
     <ProjectReference Include="..\PeerCastStation.PCP\PeerCastStation.PCP.csproj" />
     <ProjectReference Include="..\PeerCastStation.TS\PeerCastStation.TS.csproj" />
     <ProjectReference Include="..\PeerCastStation.UI.HTTP\PeerCastStation.UI.HTTP.csproj" />
