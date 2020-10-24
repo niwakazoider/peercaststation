@@ -62,6 +62,33 @@ namespace PeerCastStation.MP4
           return BoxType.UNKNOWN;
         }
       }
+
+      public static int ParseBitrate(byte[] bytes){
+        //fix me
+        //
+        //https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap3/qtff3.html#//apple_ref/doc/uid/TP40000939-CH205-SW120
+        //Bit Rate Atom (20bytes) [moov trak mdia minf ... btrt]
+        //
+        //Atom size (4)
+        //Type 'btrt' (4)
+        //Buffer size (4)
+        //Max bit rate (4)
+        //Average bit rate (4)
+        
+        byte[] pattern = new byte[] {0x00, 0x00, 0x00, 0x14, 0x62, 0x74, 0x72, 0x74};
+        
+        var bitrate = 0;
+
+        for (int i = 0; i < bytes.Length; i++){
+          if (bytes.Skip(i).Take(pattern.Length).SequenceEqual(pattern)){
+            var b = bytes.Skip(i+12).Take(4).ToArray();
+            var maxBitrate = (b[0]<<24) | (b[1]<<16) | (b[2]<<8) | (b[3]);
+            bitrate += maxBitrate;
+          }
+        }
+
+        return bitrate;
+      }
     }
 
     public string Name { get { return "Fragmented MP4 (MP4)"; } }
@@ -70,7 +97,6 @@ namespace PeerCastStation.MP4
     private long position = 0;
     private int streamIndex = -1;
     private DateTime streamOrigin = DateTime.Now;
-
 
     public async Task<byte[]> ReadHeaderAsync(Stream s, CancellationToken cancel_token)
     {
@@ -110,17 +136,18 @@ namespace PeerCastStation.MP4
       streamOrigin = DateTime.Now;
 
       try {
-        var info = new AtomCollection(Channel.ChannelInfo.Extra);
-        info.SetChanInfoType("MP4");
-        info.SetChanInfoStreamType("video/mp4");
-        info.SetChanInfoStreamExt(".mp4");
-        sink.OnChannelInfo(new ChannelInfo(info));
-
         var header = await ReadHeaderAsync(stream, cancel_token);
         sink.OnContentHeader(
           new Content(streamIndex, TimeSpan.Zero, 0, header, PCPChanPacketContinuation.None)
         );
         position += header.Length;
+
+        var info = new AtomCollection(Channel.ChannelInfo.Extra);
+        info.SetChanInfoType("MP4");
+        info.SetChanInfoStreamType("video/mp4");
+        info.SetChanInfoStreamExt(".mp4");
+        info.SetChanInfoBitrate((int)(Mbox.ParseBitrate(header)/1000));
+        sink.OnChannelInfo(new ChannelInfo(info));
 
         while (true) {
           var body = await ReadBodyAsync(stream, cancel_token);
