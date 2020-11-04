@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using PeerCastStation.Core;
 using System.Threading;
 using System.Threading.Tasks;
@@ -121,13 +122,22 @@ namespace PeerCastStation.MP4
 
     public async Task<byte[]> ReadBodyAsync(Stream s, CancellationToken cancel_token)
     {
-      var mbox = new Mbox();
-      await mbox.ReadBoxAsync(s, cancel_token);
-      if(mbox.Type != Mbox.BoxType.MOOF && mbox.Type != Mbox.BoxType.MDAT){
-        //unknown type incoming!
-        //throw new BadDataException();
+      var moofBox = new Mbox();
+      await moofBox.ReadBoxAsync(s, cancel_token);
+      if(moofBox.Type != Mbox.BoxType.MOOF){
+        return new byte[0];
       }
-      return mbox.Data;
+
+      var mdatBox = new Mbox();
+      await mdatBox.ReadBoxAsync(s, cancel_token);
+      if(mdatBox.Type != Mbox.BoxType.MDAT){
+        return new byte[0];
+      }
+
+      var mem = new MemoryStream();
+      mem.Write(moofBox.Data, 0, moofBox.Data.Length);
+      mem.Write(mdatBox.Data, 0, mdatBox.Data.Length);
+      return mem.ToArray();
     }
 
     public async Task ReadAsync(IContentSink sink, Stream stream, CancellationToken cancel_token)
@@ -151,6 +161,9 @@ namespace PeerCastStation.MP4
 
         while (true) {
           var body = await ReadBodyAsync(stream, cancel_token);
+          if(body.Length == 0){
+            continue;
+          }
           sink.OnContent(
             new Content(streamIndex, DateTime.Now-streamOrigin, position, body, PCPChanPacketContinuation.None)
           );
